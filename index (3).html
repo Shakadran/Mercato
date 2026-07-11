@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build the Nerazzurri — Inter 26/27 transfer simulator</title>
+<meta name="description" content="Sell, sign and extend your way through Inter's summer. Stay under the squad-cost cap and the net-spend floor.">
+
+<!-- link previews (WhatsApp, X, Telegram) -->
+<meta property="og:title" content="Build the Nerazzurri">
+<meta property="og:description" content="Marotta and Ausilio have to build next season's Inter without breaking the club. Think you can do better?">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+
+<style>
+  html,body{margin:0;padding:0;background:#0A0E1A}
+  #root{min-height:100vh}
+  #boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:#0A0E1A;color:#5D6478;font-family:system-ui,sans-serif;font-size:14px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="boot">Loading…</div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useRef, useEffect } = React;
+
+/* ============================================================
+   MERCATO SIMULATOR — INTER 26/27
+   Annual squad cost = amortization + GROSS salary.
+   Cap: €192.3M (25/26 squad cost). Cash floor: −€50M.
+   Salaries verified gross (Capology/TransferFeed, 26/27).
+   Net shown via per-player multiplier (Growth Decree ≈1.5, else ≈1.84).
+   ============================================================ */
+const CAP = 192_300_000;
+const CASH_FLOOR = -50_000_000;
+const TODAY = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+const POS = { GK: "GK", RCB: "RCB", CB: "CB", LCB: "LCB", RWB: "RWB", LWB: "LWB", RM: "RM", CM: "CM", DM: "DM", LM: "LM", ST: "ST" };
+const LANE = { GK: "GK", RCB: "DEF", CB: "DEF", LCB: "DEF", RWB: "WB", LWB: "WB", RM: "MID", CM: "MID", DM: "MID", LM: "MID", ST: "ATT" };
+
+/* 3-5-2 anchor coordinates (goal at bottom). Each starter role has an x/y.
+   Backups scatter around their starter with small offsets. */
+const SPOTS = {
+  GK:  { x: 50, y: 89 },
+  RCB: { x: 75, y: 71 }, CB: { x: 50, y: 75 }, LCB: { x: 25, y: 71 },
+  RWB: { x: 86, y: 46 }, LWB: { x: 14, y: 46 },
+  RM:  { x: 71, y: 54 }, CM: { x: 50, y: 50 }, DM: { x: 50, y: 62 }, LM: { x: 29, y: 54 },
+  ST1: { x: 66, y: 22 }, ST2: { x: 34, y: 22 },
+};
+
+/* ---------- SQUAD (verified 10.7.26) ----------
+   salary = GROSS €/yr (verified). mult = gross/net ratio for net display.
+   amort = annual amortization. sheetAmort = value from user's sheet if it differs.
+   spot = starting position tag. bench players get spot:null → scatter by lane. */
+const SQUAD = [
+  // GK
+  { id: "jmartinez", name: "J. Martínez", pos: "GK", age: 28, amort: 2_700_000, salary: 2_800_000, mult: 1.84, spot: "GK", role: "start" },
+  { id: "provedel", name: "Provedel", pos: "GK", age: 33, amort: 1_000_000, salary: 2_400_000, mult: 1.84, role: "bench", signed: true },
+  { id: "digennaro", name: "Di Gennaro", pos: "GK", age: 32, amort: 0, salary: 900_000, mult: 1.84, role: "bench" },
+  // DEF
+  { id: "akanji", name: "Akanji", pos: "CB", age: 31, amort: 3_750_000, salary: 9_200_000, mult: 1.5, spot: "CB", role: "start", signed: true },
+  { id: "pavard", name: "Pavard", pos: "RCB", age: 30, amort: 6_000_000, salary: 7_000_000, mult: 1.5, role: "bench", exiting: true, value: 15_000_000, note: "Back from Marseille loan · listed for sale abroad" },
+  { id: "bisseck", name: "Bisseck", pos: "RCB", age: 25, amort: 1_400_000, salary: 1_920_000, mult: 1.84, spot: "RCB", role: "start", value: 30_000_000, rumored: true },
+  { id: "bastoni", name: "Bastoni", pos: "LCB", age: 27, amort: 1_419_499, salary: 10_200_000, mult: 1.84, spot: "LCB", role: "start", value: 70_000_000 },
+  // WB
+  { id: "khalaili", name: "Khalaili", pos: "RWB", age: 21, amort: 5_000_000, salary: 3_680_000, mult: 1.84, spot: "RWB", role: "start", signed: true, pending: true },
+  { id: "dimarco", name: "Dimarco", pos: "LWB", age: 28, amort: 296_677, salary: 7_100_000, mult: 1.84, spot: "LWB", role: "start", value: 45_000_000 },
+  { id: "caugusto", name: "C. Augusto", pos: "LWB", age: 27, amort: 1_875_000, salary: 2_800_000, mult: 1.84, role: "bench" },
+  { id: "diouf", name: "Diouf", pos: "RWB", age: 23, amort: 5_000_000, salary: 3_700_000, mult: 1.84, role: "bench" },
+  { id: "lhenrique", name: "L. Henrique", pos: "RWB", age: 24, amort: 4_524_588, salary: 4_600_000, mult: 1.84, role: "bench", value: 28_000_000, rumored: true },
+  // MID
+  { id: "barella", name: "Barella", pos: "RM", age: 29, amort: 2_601_941, salary: 12_000_000, mult: 1.5, spot: "RM", role: "start", value: 65_000_000 },
+  { id: "calha", name: "Çalhanoğlu", pos: "DM", age: 32, amort: 210_320, salary: 11_100_000, mult: 1.84, spot: "DM", role: "start", value: 25_000_000 },
+  { id: "zielinski", name: "Zieliński", pos: "LM", age: 32, amort: 500_000, salary: 8_300_000, mult: 1.84, spot: "LM", role: "start" },
+  { id: "sucic", name: "Sučić", pos: "LM", age: 22, amort: 2_800_000, salary: 2_800_000, mult: 1.84, role: "bench", value: 30_000_000, rumored: true },
+  { id: "frattesi", name: "Frattesi", pos: "RM", age: 26, amort: 6_600_000, salary: 5_190_000, mult: 1.5, role: "bench", value: 30_000_000, rumored: true },
+  { id: "mkhi", name: "Mkhitaryan", pos: "LM", age: 37, amort: 0, salary: 4_900_000, mult: 1.84, role: "bench" },
+  { id: "massolin", name: "Massolin", pos: "CM", age: 23, amort: 875_000, salary: 2_208_000, mult: 1.84, role: "bench", signed: true, value: 5_000_000 },
+  { id: "asllani", name: "Asllani", pos: "DM", age: 24, amort: 3_000_000, salary: 1_400_000, mult: 1.84, role: "bench", exiting: true, value: 12_000_000, note: "Back from loan · listed for sale abroad" },
+  { id: "stankovic", name: "Stanković", pos: "DM", age: 21, amort: 2_600_000, salary: 3_680_000, mult: 1.84, role: "bench", signed: true },
+  { id: "akin", name: "Akinsanmiro", pos: "RM", age: 21, amort: 150_000, salary: 1_840_000, mult: 1.84, role: "bench", value: 9_000_000 },
+  // ATT
+  { id: "lautaro", name: "L. Martínez", pos: "ST", age: 29, amort: 998_840, salary: 16_700_000, mult: 1.5, spot: "ST1", role: "start", value: 90_000_000 },
+  { id: "thuram", name: "Thuram", pos: "ST", age: 29, amort: 1_517_446, salary: 7_600_000, mult: 1.5, spot: "ST2", role: "start", value: 75_000_000 },
+  { id: "pio", name: "Pio Esposito", pos: "ST", age: 21, amort: 0, salary: 1_800_000, mult: 1.84, role: "bench", value: 30_000_000 },
+  { id: "bonny", name: "Bonny", pos: "ST", age: 22, amort: 4_600_000, salary: 3_700_000, mult: 1.84, role: "bench" },
+];
+
+/* Locked completed deals for cash + context */
+/* contract expiry year (public data, Transfermarkt/official) */
+const CONTRACT_UNTIL = {
+  jmartinez: 2029, provedel: 2029, digennaro: 2027,
+  akanji: 2029, pavard: 2028, bisseck: 2028, bastoni: 2028,
+  khalaili: 2031, dimarco: 2027, caugusto: 2028, diouf: 2029, lhenrique: 2030,
+  barella: 2029, calha: 2027, zielinski: 2028, sucic: 2030, frattesi: 2028,
+  mkhi: 2027, asllani: 2028, stankovic: 2030, akin: 2028, massolin: 2030,
+  lautaro: 2029, thuram: 2028, pio: 2030, bonny: 2030,
+};
+
+/* Youth: full U23 (Serie C) + Primavera squads. NOT part of first-team squad cost —
+   their wages sit outside the registered senior squad — but selling them is
+   near-pure capital gain (academy players carry ~zero book value), which is
+   exactly how Inter plug the cash balance. tier: 'u23' | 'primavera' */
+const YOUTH = [
+  // --- U23 (Serie C) ---
+  { id: "kamate", name: "Kamate", pos: "CM", age: 21, tier: "u23", amort: 0, salary: 400_000, mult: 1.84, value: 5_000_000 },
+  { id: "berenbruch", name: "Berenbruch", pos: "CM", age: 21, tier: "u23", amort: 0, salary: 350_000, mult: 1.84, value: 3_500_000 },
+  { id: "depieri", name: "De Pieri", pos: "ST", age: 20, tier: "u23", amort: 0, salary: 300_000, mult: 1.84, value: 4_000_000 },
+  { id: "cocchi", name: "Cocchi", pos: "LWB", age: 20, tier: "u23", amort: 0, salary: 300_000, mult: 1.84, value: 3_000_000 },
+  { id: "topalovic", name: "Topalović", pos: "CM", age: 20, tier: "u23", amort: 600_000, salary: 350_000, mult: 1.84, value: 4_000_000 },
+  { id: "alexiou", name: "Alexiou", pos: "CB", age: 20, tier: "u23", amort: 0, salary: 250_000, mult: 1.84, value: 2_500_000 },
+  { id: "cinquegrano", name: "Cinquegrano", pos: "RWB", age: 22, tier: "u23", amort: 0, salary: 250_000, mult: 1.84, value: 1_500_000 },
+  { id: "stante", name: "Stante", pos: "CB", age: 20, tier: "u23", amort: 0, salary: 200_000, mult: 1.84, value: 1_500_000 },
+  { id: "calligaris", name: "Calligaris", pos: "GK", age: 20, tier: "u23", amort: 0, salary: 200_000, mult: 1.84, value: 1_200_000 },
+  { id: "zuberek", name: "Zuberek", pos: "ST", age: 22, tier: "u23", amort: 0, salary: 250_000, mult: 1.84, value: 1_000_000 },
+  { id: "lavelli", name: "Lavelli", pos: "ST", age: 21, tier: "u23", amort: 0, salary: 200_000, mult: 1.84, value: 1_200_000 },
+  { id: "kaczmarski", name: "Kaczmarski", pos: "DM", age: 21, tier: "u23", amort: 0, salary: 200_000, mult: 1.84, value: 900_000 },
+  // --- Primavera ---
+  { id: "marello", name: "Marello", pos: "LWB", age: 19, tier: "primavera", amort: 800_000, salary: 150_000, mult: 1.84, value: 4_000_000 },
+  { id: "maye", name: "Maye", pos: "CB", age: 18, tier: "primavera", amort: 0, salary: 100_000, mult: 1.84, value: 1_500_000 },
+  { id: "idrissou", name: "Idrissou", pos: "ST", age: 18, tier: "primavera", amort: 0, salary: 100_000, mult: 1.84, value: 2_000_000 },
+  { id: "jakirovic", name: "Jakirović", pos: "CB", age: 18, tier: "primavera", amort: 0, salary: 100_000, mult: 1.84, value: 1_000_000 },
+  { id: "mosconi", name: "Mosconi", pos: "ST", age: 19, tier: "primavera", amort: 0, salary: 120_000, mult: 1.84, value: 1_200_000 },
+  { id: "iddrissou", name: "Venturini", pos: "CM", age: 19, tier: "primavera", amort: 0, salary: 100_000, mult: 1.84, value: 800_000 },
+  { id: "zarate", name: "Zarate", pos: "RWB", age: 18, tier: "primavera", amort: 0, salary: 90_000, mult: 1.84, value: 700_000 },
+  { id: "bovo", name: "Bovo", pos: "CB", age: 18, tier: "primavera", amort: 0, salary: 90_000, mult: 1.84, value: 600_000 },
+];
+
+const DONE = [
+  { name: "Dumfries", detail: "→ Real Madrid · €20M", cash: 20_000_000 },
+  { name: "S. Esposito", detail: "→ Cagliari, permanent · €4M", cash: 4_000_000 },
+  { name: "Khalaili", detail: "← Union SG · €25M", cash: -25_000_000 },
+  { name: "Stanković", detail: "← Brugge buy-back · €23M", cash: -23_000_000 },
+  { name: "Akanji", detail: "← permanent · €15M", cash: -15_000_000 },
+  { name: "Provedel", detail: "← Lazio · €3M", cash: -3_000_000 },
+  { name: "F. Carboni", detail: "→ Parma, permanent · €2.5M", cash: 2_500_000 },
+  { name: "Akinsanmiro", detail: "loan back, no fee", cash: 0 },
+  { name: "Sommer", detail: "left free", cash: 0 },
+  { name: "de Vrij", detail: "→ Panathinaikos, free", cash: 0 },
+  { name: "Darmian", detail: "left free", cash: 0 },
+  { name: "Acerbi", detail: "left free", cash: 0 },
+  { name: "Alexiou", detail: "→ AEK Athens", cash: 1_500_000 },
+];
+const DONE_CASH = DONE.reduce((s, d) => s + d.cash, 0);
+
+/* Sale targets — clubs linked + reported price per player (for the Sell modal) */
+/* Transfer talk per player — surfaced in the popover instead of pitch icons */
+/* ============================================================
+   SQUAD SOURCE
+
+   Everything below is the fallback, baked in so the file runs standalone.
+   If squad.json sits next to it, that wins: the app loads it on startup and
+   replaces the squad, the cash ledger, the contracts and the transfer talk.
+
+   To record a departure, delete the player from squad.json (or set
+   "gone": true) and add a line to "cash". No rebuild, no API, no cost.
+   ============================================================ */
+const SQUAD_URL = "./squad.json";
+
+/* live stores — start as the built-ins, overwritten if squad.json loads */
+let CAP_V = CAP, FLOOR_V = CASH_FLOOR;
+const STORE = {
+  squad: null,          // filled on load
+  cash: null,
+  until: null,
+  talk: null,
+};
+const contractOf = p => (STORE.until ? STORE.until[p.id] : CONTRACT_UNTIL[p.id]) || p.until;
+/* transfer talk: squad.json wins if it carries any, else the built-in baseline */
+const talkFor = p => (STORE.talk ? STORE.talk[p.id] : SALE_LINKS[p.id]);
+
+const SALE_LINKS = {
+  pavard: { price: 15_000_000, clubs: ["Marseille", "Galatasaray"], type: "Listed for sale",
+    talk: "Back from his Marseille loan. Inter tasked agent Pastorello with finding a move abroad — a sale or a loan with an obligation are both on the table." },
+  asllani: { price: 12_000_000, clubs: ["Beşiktaş", "Torino"], type: "Listed for sale",
+    talk: "Returned after loans at Torino and Beşiktaş, who held a €11M option. Surplus to the midfield; Inter want a permanent exit." },
+  frattesi: { price: 30_000_000, clubs: ["Roma", "Atlético", "Newcastle"], type: "Sale rumours",
+    talk: "Inter price him around €30M (Corriere dello Sport). No formal bid yet, but he's the most likely midfield sale if a big offer lands." },
+  sucic: { price: 30_000_000, clubs: ["Real Madrid"], type: "Sale rumours",
+    talk: "Croatian press report Real Madrid scouting him. Inter consider him a long-term starter and would resist." },
+  lhenrique: { price: 28_000_000, clubs: ["Bournemouth", "Nottingham Forest"], type: "Sale rumours",
+    talk: "Bournemouth bid around €30M in January. Inter remain open to a similar figure — he's behind Khalaili in the pecking order." },
+  bisseck: { price: 30_000_000, clubs: ["Bayern", "Tottenham"], type: "Sale rumours",
+    talk: "Bayern have checked his valuation. Inter would want well above €30M given he's a first-choice centre-back." },
+  akin: { price: 8_500_000, clubs: ["Pisa", "Werder", "Gladbach"], type: "Loan or sale",
+    talk: "Pisa's €7.5M buy-back lapsed on a paperwork error, so he's back at Inter. Werder and Gladbach have enquired — another loan is the likeliest outcome." },
+  bastoni: { price: 70_000_000, clubs: ["Man City", "Real Madrid"], type: "Not for sale",
+    talk: "Perennially linked with the Premier League. Inter class him as untouchable — only a bid far beyond €70M would be entertained." },
+  calha: { price: 25_000_000, clubs: ["Galatasaray"], type: "Sale rumours",
+    talk: "Galatasaray have courted him for two windows. With one year left on his deal, this is the last window to cash in — or extend." },
+  pio: { price: 30_000_000, clubs: ["Chelsea"], type: "Sale rumours",
+    talk: "Chelsea have shown interest in the academy striker. He's said to be happy in Milan and Inter want to keep him." },
+  dimarco: { price: 45_000_000, clubs: [], type: "Renewal talk",
+    talk: "No serious exit talk — but his deal expires in 2027 and the club are planning an extension." },
+  // youth
+  kamate: { price: 5_000_000, clubs: [], type: "Sale rumours",
+    talk: "His agent says there's plenty of foreign interest. Spent half a season on loan at Modena; a sale would be near-pure profit as an academy product." },
+  berenbruch: { price: 3_500_000, clubs: ["Cagliari"], type: "Loan only",
+    talk: "Talks with Cagliari are ongoing but the clubs haven't agreed a formula. Inter insist he leaves only on loan with a buy-back clause." },
+  depieri: { price: 4_000_000, clubs: ["Ascoli"], type: "Loan or sale",
+    talk: "A move to Ascoli is in its final stages — a loan with a purchase option for them and a counter-option retained by Inter." },
+  cocchi: { price: 3_000_000, clubs: ["Pisa", "Palermo", "Catanzaro"], type: "Sale rumours",
+    talk: "Three Serie B clubs are monitoring the young winger. Inter are open to a permanent exit." },
+  marello: { price: 4_000_000, clubs: [], type: "Not for sale",
+    talk: "Signed permanently from Udinese after an impressive Primavera season — Inter see him as one to keep and may take him on pre-season." },
+};
+
+/* Incoming rumors (Sign modal) — from TransferFeed/press, reported figures */
+
+
+/* ---------- helpers ---------- */
+const fmtM = v => {
+  const m = v / 1e6;
+  const s = Math.abs(m) >= 100 ? m.toFixed(0) : (Math.round(m * 10) / 10).toString();
+  return "€" + s + "M";
+};
+const annual = p =>
+  p.zone === "exit"
+    ? (p.exit?.mode === "loan" ? p.amort + p.salary * (1 - (p.exit.coverage ?? 100) / 100) : 0)
+    : p.amort + p.salary;
+
+// cost → color: green (cheap) → amber → red (expensive), based on annual cost
+const costColor = a => {
+  const t = Math.min(1, Math.max(0, (a - 2_000_000) / (18_000_000 - 2_000_000)));
+  // green 150 → red 0 in hue
+  const hue = 145 - t * 145;
+  return `hsl(${hue}, 62%, 46%)`;
+};
+
+
+
+
+/* ============================ STYLE — Apple-clean, Inter ============================ */
+const CSS = `
+@import url('https://rsms.me/inter/inter.css');
+:root{
+  --bg:#F5F5F7; --card:#FFFFFF; --ink:#1D1D1F; --ink2:#6E6E73; --hair:#E3E3E6;
+  --blue:#0A2A6B; --blue2:#1B54D6; --accent:#0071E3; --grass:#2E7D46;
+  --red:#E5484D; --amber:#E8A93C; --green:#2F9E5B;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.06);
+}
+*{box-sizing:border-box}
+.app{font-family:'Inter',-apple-system,sans-serif;font-feature-settings:'cv11','ss01';background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;padding-bottom:48px}
+.app h1,.app h2,.app h3{margin:0;font-weight:600;letter-spacing:-.02em}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+
+.top{text-align:center;padding:36px 0 12px}
+.top .badge{width:34px;height:34px;border-radius:9px;background:var(--blue);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;letter-spacing:-.04em;margin-bottom:14px}
+.top h1{font-size:clamp(28px,5vw,40px);font-weight:700;letter-spacing:-.035em}
+.top p{color:var(--ink2);font-size:14px;line-height:1.5;max-width:44ch;margin:8px auto 0}
+
+/* meters */
+.board{background:var(--bg);padding:12px 0;margin-top:14px;border-bottom:1px solid var(--hair)}
+.meters{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.meters{grid-template-columns:1fr}}
+.meter{background:var(--card);border-radius:16px;padding:13px 16px;box-shadow:var(--shadow)}
+.meter .top-row{display:flex;justify-content:space-between;align-items:baseline}
+.meter .lbl{font-size:12px;color:var(--ink2);font-weight:500}
+.meter .val{font-size:26px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.meter .val.bad{color:var(--red)}
+.track{height:6px;border-radius:3px;background:#EBEBED;overflow:hidden;margin-top:10px;position:relative}
+.tfill{height:100%;border-radius:3px;transition:width .5s cubic-bezier(.22,.7,.28,1),background .3s}
+.cap{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.42;border-radius:2px}
+.meter .cnote{font-size:11.5px;color:var(--ink2);margin-top:8px}
+.meter .cnote.bad{color:var(--red)}
+
+/* segmented toggle */
+.seg{display:inline-flex;background:#E9E9EB;border-radius:9px;padding:2px;gap:2px}
+.seg button{font-family:inherit;font-size:12px;font-weight:500;border:none;background:none;color:var(--ink2);padding:4px 12px;border-radius:7px;cursor:pointer;transition:all .15s}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* pitch */
+.pitch-card{margin:14px auto 0;max-width:696px;background:linear-gradient(160deg,#2f8049,#276b3d);border-radius:22px;padding:8px;box-shadow:var(--shadow)}
+.pitch{position:relative;width:100%;aspect-ratio:10/11.2;max-width:680px;margin:0 auto;border-radius:16px;overflow:visible;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.028) 0 8.33%,rgba(0,0,0,.028) 8.33% 16.66%)}
+.pitch svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:auto auto auto auto;align-content:space-evenly;padding:22px 4% 16px;gap:12px 3%}
+.cell{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;min-width:0;overflow:visible}
+.node{display:contents}
+.chip{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;touch-action:manipulation;user-select:none;
+  background:rgba(6,20,10,.5);border-radius:7px;padding:4px 7px;width:max-content;max-width:none;
+  transition:transform .12s,background .15s;white-space:nowrap;backdrop-filter:blur(3px);box-shadow:0 1px 3px rgba(0,0,0,.22);text-align:center}
+.chip:hover{background:rgba(6,20,10,.66)}
+.chip:active{cursor:grabbing}
+.chip.start{padding:5px 9px;background:rgba(6,20,10,.58)}
+.chip.sub{padding:3px 6px;background:rgba(6,20,10,.4)}
+.chip.sub:hover{background:rgba(6,20,10,.56)}
+.chip.drag{opacity:.4}
+.chip .nm{font-weight:600;line-height:1.1;letter-spacing:-.01em;color:#fff;white-space:nowrap}
+.chip.start .nm{font-size:10.5px}
+.chip.sub .nm{font-size:8.5px;color:rgba(255,255,255,.92)}
+.chip .amt{font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.chip.start .amt{font-size:9.5px}
+.chip.sub .amt{font-size:7.5px}
+.chip .lock{font-size:8px;opacity:.85}
+.chip .flag{font-weight:700;margin-inline-end:2px;font-size:.92em}
+.chip .flag.star{color:var(--gold)}
+.chip .flag.out{color:#FF8A5B}
+.chip .flag.rum{color:#7FB2FF;font-size:1.1em;line-height:0}
+.subwrap{display:none}
+.bench-strip{display:none}
+
+/* player info popover → action sheet */
+.pop-sheet{max-width:420px}
+.pop-head2{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:2px}
+.pop-name2{font-size:19px;font-weight:700;letter-spacing:-.02em}
+.pop-pos2{font-size:12px;color:var(--ink2);font-weight:500}
+.pop-status{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pop-badge{font-size:11px;font-weight:600;padding:2px 9px;border:1px solid;border-radius:20px}
+.pop-rows{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.pop-rows>div{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
+.pop-rows span{color:var(--ink2)}
+.pop-rows b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.pop-note{margin-top:12px;font-size:12px;line-height:1.45;color:var(--ink2);background:#F5F5F7;border-radius:10px;padding:9px 11px}
+
+/* tappable meters + breakdown tables */
+.meter.tappable{width:100%;text-align:inherit;border:none;font-family:inherit;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.meter.tappable:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.08),0 10px 28px rgba(0,0,0,.08)}
+.meter.tappable:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cnote{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.seemore{color:var(--accent);font-weight:600;font-size:11px;white-space:nowrap}
+.sheet.wide{max-width:660px}
+.tbl-wrap{margin-top:12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{text-align:start;font-size:10.5px;font-weight:600;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;
+  padding:7px 8px;border-bottom:1px solid var(--hair);cursor:pointer;white-space:nowrap;user-select:none}
+.tbl th:hover{color:var(--accent)}
+.tbl th.on{color:var(--accent)}
+.tbl td{padding:8px;border-bottom:1px solid #F0F0F2;white-space:nowrap}
+.tbl tr.dim{opacity:.45}
+.tbl .pname{font-weight:600;color:var(--ink)}
+.tbl .mut{color:var(--ink2)}
+.tbl .num{text-align:end;font-variant-numeric:tabular-nums}
+.tbl .strong{font-weight:700}
+.tbl tfoot td{border-bottom:none;border-top:2px solid var(--hair);font-weight:700;color:var(--ink);padding-top:10px}
+.outtag{font-size:9px;font-weight:600;color:var(--red);background:#FDEBEC;border-radius:20px;padding:1px 6px;margin-inline-start:5px}
+.tier{font-size:9px;font-weight:700;border-radius:20px;padding:1px 6px;margin-inline-start:6px;letter-spacing:.02em}
+.tier.u23{background:#EAF1FD;color:var(--blue2)}
+.tier.primavera{background:#F3EEFB;color:#6E43C4}
+
+/* live sync bar */
+.syncbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;
+  background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:11px 14px;box-shadow:var(--shadow)}
+.syncbar.baseline{border-color:#F2D9B0;background:#FEFBF5}
+.sync-left{display:flex;align-items:center;gap:10px;min-width:0}
+.sync-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--ink2)}
+.sync-dot.loading{background:var(--accent);animation:pulse 1.2s ease-in-out infinite}
+.sync-dot.done{background:var(--green);box-shadow:0 0 0 3px rgba(47,158,91,.15)}
+.sync-dot.baseline{background:var(--amber)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.syncbar b{font-size:12.5px;font-weight:600;display:block}
+.sync-sub{font-size:11px;color:var(--ink2);display:block;margin-top:1px}
+.sync-log{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.sync-line{font-size:11.5px;padding:6px 12px;border-radius:8px;background:#F5F5F7;color:var(--ink2)}
+.sync-line span{font-weight:700;margin-inline-end:6px}
+.sync-line.in{background:#EAF7EF;color:#1C6B3A}
+.sync-line.out{background:#FDEBEC;color:#9C2A2E}
+@media(prefers-reduced-motion:reduce){.sync-dot.loading{animation:none}}
+.dropdown{margin-top:12px;border:1px solid var(--hair);border-radius:12px;overflow:hidden;background:#FAFAFB}
+.dd-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:none;border:none;font-family:inherit;text-align:start;padding:12px 14px;cursor:pointer;transition:background .15s}
+.dd-head:hover{background:#F2F4F8}
+.dd-title{display:block;font-size:13.5px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.dd-sub{display:block;font-size:11px;color:var(--ink2);margin-top:2px}
+.dd-arrow{font-size:20px;color:var(--ink2);transform:rotate(90deg);transition:transform .2s;line-height:1}
+.dd-arrow.open{transform:rotate(-90deg)}
+.dd-body{padding:0 10px 10px;display:flex;flex-direction:column;gap:6px;background:#fff;border-top:1px solid var(--hair)}
+.dd-tab{font-size:10.5px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;padding:12px 4px 4px}
+.dd-tab.hot{color:var(--accent)}
+.talk{margin-top:14px;background:#F7F8FA;border:1px solid var(--hair);border-radius:12px;padding:11px 13px}
+.talk-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.talk-title{font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em}
+.talk-type{font-size:10.5px;font-weight:600;padding:2px 9px;border:1px solid;border-radius:20px}
+.talk-price{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-top:9px}
+.talk-price span{color:var(--ink2)}
+.talk-price b{font-weight:700;font-variant-numeric:tabular-nums}
+.club-tag{font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;background:#fff;border:1px solid var(--hair);color:var(--ink)}
+.talk-body{margin-top:9px;font-size:12px;line-height:1.5;color:var(--ink2)}
+.pop-hint{margin-top:9px;font-size:11px;color:var(--ink2);opacity:.8;text-align:center}
+.pop-actions{display:flex;gap:7px;margin-top:14px}
+.pop-actions .cta{flex:1;padding:12px 8px;font-size:14px;white-space:nowrap}
+.pop-actions .cta{margin-top:0}
+.cta.ghost2{background:#EDEDF0;color:var(--ink)}
+
+/* action bar */
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px;margin-bottom:2px}
+@media(max-width:520px){.actions{grid-template-columns:1fr}}
+.act{background:var(--card);border:none;border-radius:16px;padding:16px 14px;text-align:right;cursor:pointer;box-shadow:var(--shadow);transition:transform .12s;font-family:inherit}
+.act:hover{transform:translateY(-2px)}
+.act:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.act .ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:10px}
+.act .t{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.act .d{font-size:11.5px;color:var(--ink2);margin-top:3px;line-height:1.35}
+
+/* sheet / modal */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.32);backdrop-filter:blur(3px);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:560px){.scrim{align-items:center}}
+.sheet{background:var(--card);width:100%;max-width:520px;max-height:88vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:20px;box-shadow:0 -10px 40px rgba(0,0,0,.2)}
+@media(min-width:560px){.sheet{border-radius:22px}}
+.sheet h3{font-size:19px;font-weight:700;letter-spacing:-.02em}
+.sheet .sub{font-size:12.5px;color:var(--ink2);margin-top:3px}
+.close{float:left;border:none;background:#EBEBED;width:28px;height:28px;border-radius:50%;font-size:15px;color:var(--ink2);cursor:pointer;line-height:1}
+.plist{margin-top:14px;display:flex;flex-direction:column;gap:7px}
+.searchbar{display:flex;gap:8px;margin-bottom:4px}
+.searchbar input{flex:1;font-family:inherit;font-size:14px;border:1px solid var(--hair);border-radius:10px;padding:10px 12px;background:#FAFAFB;color:var(--ink)}
+.searchbar input:focus{outline:none;border-color:var(--accent);background:#fff}
+.btn-search{font-family:inherit;font-size:13px;font-weight:600;border:none;border-radius:10px;background:var(--blue);color:#fff;padding:0 16px;cursor:pointer;min-width:74px;display:flex;align-items:center;justify-content:center}
+.btn-search:disabled{opacity:.5;cursor:default}
+.listlabel{font-size:11px;font-weight:600;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 2px}
+.prow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--hair);border-radius:12px;cursor:pointer;transition:border-color .15s,background .15s;font-family:inherit;text-align:right;width:100%;background:none}
+.prow:hover{border-color:var(--accent);background:#F5F9FF}
+.prow .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.prow .nm{font-size:14px;font-weight:600}
+.prow .meta{font-size:11px;color:var(--ink2)}
+.prow .r{margin-inline-start:auto;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.pill{font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;background:#F0F0F2;color:var(--ink2)}
+.clubs{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.club{font-size:11.5px;font-weight:500;padding:5px 11px;border-radius:20px;border:1px solid var(--hair);background:#fff;cursor:pointer;transition:all .15s;font-family:inherit;color:var(--ink)}
+.club.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.fieldrow{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
+.f{display:flex;flex-direction:column;gap:5px;flex:1;min-width:120px}
+.f label{font-size:11px;color:var(--ink2);font-weight:500}
+.freerow{margin-top:12px}
+.check{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px;color:var(--ink);font-weight:500}
+.check input{width:18px;height:18px;accent-color:var(--blue);cursor:pointer}
+.f input,.f select{font-family:inherit;font-size:15px;border:1px solid var(--hair);border-radius:10px;padding:9px 11px;background:#FAFAFB;color:var(--ink)}
+.f input:focus{outline:none;border-color:var(--accent);background:#fff}
+.slider{accent-color:var(--blue2)}
+.big-num{font-size:15px;font-weight:700;letter-spacing:-.02em}
+.hint2{font-size:12px;color:var(--ink2);line-height:1.5;margin-top:12px;background:#F5F5F7;border-radius:10px;padding:10px 12px}
+.hint2.warn{background:#FDF4E3;color:#8A6410}
+.hint2.ok{background:#EAF7EF;color:#1C6B3A}
+.cta{width:100%;margin-top:16px;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:13px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.cta:disabled{opacity:.4;cursor:default}
+.cta.dngr{background:var(--red)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-1px;margin-inline-start:6px}
+.spin.dark{border-color:#ccc;border-top-color:var(--ink2)}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* changes list */
+.changes{margin-top:20px}
+.changes h3{font-size:13px;font-weight:600;color:var(--ink2);letter-spacing:.02em;margin-bottom:8px}
+.crow{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:12px;padding:11px 14px;box-shadow:var(--shadow);margin-bottom:7px}
+.crow .nm{font-size:14px;font-weight:600}
+.crow .tag{font-size:11px;font-weight:500;padding:2px 9px;border-radius:20px}
+.crow .tag.sell{background:#FDEBEC;color:var(--red)}
+.crow .tag.loan{background:#EAF1FD;color:var(--blue2)}
+.crow .tag.sign{background:#EAF7EF;color:var(--green)}
+.crow .tag.ext{background:#F3EEFB;color:#6E43C4}
+.crow .r{margin-inline-start:auto;display:flex;gap:8px;align-items:center}
+.crow .undo{border:none;background:#F0F0F2;color:var(--ink2);border-radius:8px;padding:5px 10px;font-size:11.5px;cursor:pointer;font-family:inherit}
+.done-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;align-items:center}
+.done-chip{font-size:11px;background:#fff;border:1px solid var(--hair);border-radius:20px;padding:4px 10px;color:var(--ink2)}
+.done-chip b{color:var(--ink);font-weight:600}
+/* splash */
+.splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:#0A0E1A;padding:32px 20px 44px;overflow-y:auto;
+  font-family:'Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+/* the photo sits at its own size and dissolves into the background on every edge,
+   so there's no hard cut and nothing gets upscaled into mush */
+/* a round portrait: nothing gets cut off at an edge, and it fades softly into the dark */
+.sp-photo{position:relative;width:224px;height:224px;border-radius:50%;overflow:hidden;
+  margin-bottom:26px;pointer-events:none;
+  box-shadow:0 0 0 1px rgba(255,255,255,.1), 0 20px 60px -14px rgba(0,0,0,.85)}
+.sp-photo img{width:100%;height:100%;object-fit:cover;object-position:center center;display:block}
+.sp-photo::after{content:"";position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 50% 48%, transparent 72%, rgba(10,14,26,.35) 90%, rgba(10,14,26,.7) 100%)}
+.sp-body{display:flex;flex-direction:column;align-items:center;text-align:center;
+  padding:0 6px;position:relative;z-index:2}
+.splash h1{font-size:clamp(28px,6.5vw,40px);font-weight:700;letter-spacing:-.035em;color:#fff;margin:0;line-height:1.1}
+.splash p{color:#98A0B4;font-size:14.5px;line-height:1.65;max-width:42ch;margin:15px 0 0}
+.sp-play{margin-top:30px;border:none;border-radius:30px;
+  background:linear-gradient(100deg,#0A0F1C 0%,#0F1C3D 38%,#1B54D6 100%);
+  color:#fff;padding:16px 66px;font-family:inherit;font-size:16.5px;font-weight:700;letter-spacing:.01em;
+  cursor:pointer;transition:transform .14s,filter .14s}
+.sp-play:hover{transform:translateY(-2px);filter:brightness(1.15)}
+.sp-play:active{transform:translateY(0)}
+
+/* the two rules */
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+@media(max-width:640px){.rules{grid-template-columns:1fr}}
+.ru{display:flex;gap:10px;background:var(--card);border-radius:13px;box-shadow:var(--shadow);padding:13px 15px}
+.ru-n{width:19px;height:19px;border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.ru span:last-child{font-size:12px;color:var(--ink2);line-height:1.5}
+.ru b{display:block;color:var(--ink);font-size:12.5px;font-weight:600;margin-bottom:2px}
+
+/* method: splash link */
+.sp-method{margin-top:20px;background:none;border:none;color:#7C8698;font-family:inherit;font-size:12.5px;
+  cursor:pointer;padding:6px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#39415A;
+  transition:color .15s}
+.sp-method:hover{color:#C3CAD8}
+
+/* method: in-game link */
+.methodlink{width:100%;margin-top:10px;background:none;border:none;font-family:inherit;font-size:12px;
+  color:var(--accent);cursor:pointer;padding:8px;text-align:center;font-weight:500;border-radius:9px;transition:background .15s}
+.methodlink:hover{background:#EDF4FE}
+
+/* method: accordion */
+.method{margin-top:16px;border-top:1px solid var(--hair)}
+.acc{border-bottom:1px solid var(--hair)}
+.acc-q{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:none;border:none;font-family:inherit;text-align:start;padding:14px 2px;cursor:pointer;
+  font-size:13.5px;font-weight:600;color:var(--ink);transition:color .15s}
+.acc-q:hover{color:var(--accent)}
+.acc.on .acc-q{color:var(--accent)}
+.acc-x{font-size:17px;color:var(--ink2);font-weight:400;flex-shrink:0;line-height:1}
+.acc-a{padding:0 2px 16px}
+.acc-a p{font-size:13px;line-height:1.65;color:var(--ink2);margin:0 0 10px}
+.acc-a p:last-child{margin-bottom:0}
+.acc-a b{color:var(--ink);font-weight:600}
+.acc-a i{color:var(--ink2)}
+
+.viewbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;
+  background:#EAF1FD;border:1px solid #C9DBF8;border-radius:12px;padding:10px 14px;font-size:12.5px;color:var(--blue)}
+.viewbar.soft{background:#F5F5F7;border-color:var(--hair);color:var(--ink2)}
+.viewbar button{border:none;background:var(--blue);color:#fff;border-radius:20px;padding:6px 13px;
+  font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap}
+.viewbar.soft button{background:#E3E3E6;color:var(--ink)}
+
+.sharebtn{width:100%;margin-top:12px;background:var(--card);border:1px solid var(--hair);border-radius:16px;
+  padding:15px;font-family:inherit;cursor:pointer;box-shadow:var(--shadow);display:flex;flex-direction:column;
+  align-items:center;gap:3px;transition:transform .12s,border-color .15s}
+.sharebtn:hover{transform:translateY(-2px);border-color:var(--accent)}
+.sb-main{font-size:14.5px;font-weight:600;color:var(--blue)}
+.sb-sub{font-size:11.5px;color:var(--ink2)}
+
+.share-card{margin-top:16px;background:linear-gradient(150deg,#0A2A6B,#1B54D6);border-radius:14px;padding:18px;color:#fff}
+.sc-title{font-size:17px;font-weight:700;letter-spacing:-.02em}
+.sc-stats{display:flex;gap:18px;margin-top:12px;flex-wrap:wrap}
+.sc-stats span{display:flex;flex-direction:column;font-size:10.5px;color:rgba(255,255,255,.7)}
+.sc-stats b{font-size:17px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+.src-tag{font-size:10.5px;font-weight:600;color:var(--green);background:#EAF7EF;border-radius:20px;padding:3px 9px}
+
+.refresh{font-size:12px;font-family:inherit;border:1px solid var(--hair);background:#fff;border-radius:20px;padding:5px 12px;cursor:pointer;color:var(--ink)}
+.ftr{margin-top:26px;font-size:11.5px;color:var(--ink2);line-height:1.6;border-top:1px solid var(--hair);padding-top:14px}
+@media(prefers-reduced-motion:reduce){.tfill,.node,.chip,.act{transition:none}.spin{animation-duration:2s}}
+@media(max-width:480px){
+  .grid{padding:16px 2% 12px;gap:9px 1.5%}
+  .chip.start{padding:4px 6px}
+  .chip.start .nm{font-size:9.5px}
+  .chip.start .amt{font-size:8.5px}
+  .chip.sub .nm{font-size:8px}
+  .chip.sub .amt{font-size:7px}
+}
+`;
+
+/* ===================== drag ===================== */
+function useDrag(onDrop, onTap) {
+  const [dragId] = useState(null);
+  // drag-to-sell was removed; every press on a chip is a tap that opens the popover.
+  const start = (id, e) => {
+    const px = e.touches ? e.touches[0].clientX : e.clientX;
+    const py = e.touches ? e.touches[0].clientY : e.clientY;
+    onTap?.(id, { x: px, y: py });
+  };
+  return { dragId, start };
+}
+
+/* Fixed grid of 11 position cells in a 3-5-2. Each cell holds its starter
+   on top and its backups stacked below — no free coordinates, no overlap.
+   Grid columns 1..5, rows for ATT / MID / WB+DEF / GK. */
+const CELLS = [
+  { key: "ST2", pos: "ST", col: 2, row: 1 }, { key: "ST1", pos: "ST", col: 4, row: 1 },
+  { key: "LWB", pos: "LWB", col: 1, row: 2 }, { key: "LM", pos: "LM", col: 2, row: 2 },
+  { key: "CM_DM", pos: "MIDC", col: 3, row: 2 }, { key: "RM", pos: "RM", col: 4, row: 2 },
+  { key: "RWB", pos: "RWB", col: 5, row: 2 },
+  { key: "LCB", pos: "LCB", col: 2, row: 3 }, { key: "CB", pos: "CB", col: 3, row: 3 }, { key: "RCB", pos: "RCB", col: 4, row: 3 },
+  { key: "GK", pos: "GK", col: 3, row: 4 },
+];
+// which exact positions belong to each cell
+const CELL_POS = {
+  ST2: ["ST"], ST1: ["ST"], LM: ["LM"], RM: ["RM"], CM_DM: ["CM", "DM"],
+  LWB: ["LWB"], RWB: ["RWB"], LCB: ["LCB"], CB: ["CB"], RCB: ["RCB"], GK: ["GK"],
+};
+
+function layout(players) {
+  const onField = players.filter(p => p.zone !== "exit" && !p.tier);
+  const starters = onField.filter(p => p.role === "start" && p.spot);
+  const bench = onField.filter(p => !(p.role === "start" && p.spot));
+  const used = new Set();
+
+  // pass 1: place each cell's starter
+  const cells = CELLS.map(cell => {
+    let starter = starters.find(s => s.spot === cell.key && !used.has(s.id));
+    if (!starter) starter = starters.find(s => CELL_POS[cell.key].includes(s.pos) && !used.has(s.id));
+    if (starter) used.add(starter.id);
+    return { ...cell, starter, subs: [] };
+  });
+
+  // pass 2: distribute bench round-robin across cells that accept that position,
+  // so e.g. two ST backups split across the two striker cells.
+  const cellsForPos = pos => cells.filter(c => CELL_POS[c.key].includes(pos));
+  const rr = {}; // position → next cell index
+  bench.forEach(p => {
+    const cands = cellsForPos(p.pos);
+    if (!cands.length) return;
+    const i = (rr[p.pos] = (rr[p.pos] ?? -1) + 1) % cands.length;
+    // prefer the least-loaded candidate for balance
+    const target = cands.reduce((a, b) => (b.subs.length < a.subs.length ? b : a), cands[i]);
+    target.subs.push(p);
+    used.add(p.id);
+  });
+
+  const leftover = bench.filter(p => !used.has(p.id));
+  return leftover.length
+    ? cells.concat([{ key: "extra", pos: "", col: 3, row: 4, starter: null, subs: leftover, extra: true }])
+    : cells;
+}
+
+function Chip({ p, size, dragging, onDown }) {
+  const a = annual(p);
+  return (
+    <div className={"chip " + size + (dragging ? " drag" : "")}
+      role="button" tabIndex={0}
+      onClick={e => onDown(p.id, e)}
+      onKeyDown={e => (e.key === "Enter" || e.key === " ") && onDown(p.id, e)}>
+      <span className="nm">
+        {(p.signed || p.newSigning) && <span className="flag star" title="Signed">★</span>}
+        {p.name}
+      </span>
+      <span className="amt" style={{ color: costColor(a) }}>{fmtM(a)}</span>
+    </div>
+  );
+}
+
+/* ===================== SELL modal ===================== */
+function SellModal({ players, onClose, onApply, onCheck }) {
+  // senior squad, costliest first — the biggest saving at the top.
+  const avail = players.filter(p => p.zone !== "exit");
+  const seniors = avail.filter(p => !p.tier).sort((a, b) => annual(b) - annual(a));
+  // youth: sorted by market value — the sale is near-pure profit, so value is what matters.
+  const youth = avail.filter(p => p.tier).sort((a, b) => (b.value || 0) - (a.value || 0));
+  const [youthOpen, setYouthOpen] = useState(false);
+  const [sel, setSel] = useState(null);
+  const [mode, setMode] = useState("sell");
+  const [price, setPrice] = useState("");
+  const [clubs, setClubs] = useState([]);
+  const [cov, setCov] = useState(100);
+  const [checking, setChecking] = useState(false);
+  const [live, setLive] = useState(null);
+
+  const pick = p => {
+    setSel(p); setMode("sell");
+    const link = talkFor(p);
+    setPrice(link ? link.price / 1e6 : (p.value ? p.value / 1e6 : ""));
+    setClubs(link ? [...link.clubs] : []);
+    setLive(null);
+  };
+  // price + clubs come from the daily feed, not a live call
+  const runCheck = () => {
+    const l = talkFor(sel);
+    if (l) {
+      if (l.price) setPrice(l.price / 1e6);
+      if (l.clubs?.length) setClubs(l.clubs);
+      setLive({ note: l.talk });
+    } else {
+      setLive({ note: "No reported price in today's feed — enter your own figure." });
+    }
+  };
+  const link = sel && talkFor(sel);
+  const dev = link && price ? (price * 1e6 - link.price) / link.price : 0;
+
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <button className="close" onClick={onClose}>✕</button>
+        <h3>Sell or loan a player</h3>
+        <div className="sub">Senior squad sorted by annual saving, costliest first. Academy players carry almost no book value, so selling them is nearly pure profit — cash in, without touching the cost cap.</div>
+
+        {!sel ? (
+          <div className="plist">
+            <div className="listlabel">First team</div>
+            {seniors.map(p => (
+              <button className="prow" key={p.id} onClick={() => pick(p)}>
+                <span className="dot" style={{ background: costColor(annual(p)) }} />
+                <span style={{ minWidth: 0 }}>
+                  <span className="nm">{p.name}</span><br />
+                  <span className="meta">
+                    {POS[p.pos]} · {p.age}
+                    {contractOf(p) ? ` · until ${contractOf(p)}` : ""}
+                    {p.value ? ` · worth ~${fmtM(p.value)}` : ""}
+                    {p.exiting ? " · listed to leave" : talkFor(p) ? " · has interest" : ""}
+                  </span>
+                </span>
+                <span className="r" style={{ textAlign: "end" }}>
+                  {fmtM(annual(p))}<span className="meta"> /yr</span>
+                </span>
+              </button>
+            ))}
+
+            {youth.length > 0 && (() => {
+              const hot = youth.filter(p => talkFor(p));
+              const rest = youth.filter(p => !talkFor(p));
+              const YRow = p => (
+                <button className="prow" key={p.id} onClick={() => pick(p)}>
+                  <span className="dot" style={{ background: p.tier === "u23" ? "var(--blue2)" : "#6E43C4" }} />
+                  <span style={{ minWidth: 0 }}>
+                    <span className="nm">
+                      {p.name}
+                      <span className={"tier " + p.tier}>{p.tier === "u23" ? "U23" : "Primavera"}</span>
+                    </span><br />
+                    <span className="meta">
+                      {POS[p.pos]} · {p.age}
+                      {talkFor(p)?.clubs?.length ? " · " + talkFor(p).clubs.join(", ") : ""}
+                    </span>
+                  </span>
+                  <span className="r" style={{ textAlign: "end" }}>
+                    ~{fmtM(p.value || 0)}<span className="meta"> value</span>
+                  </span>
+                </button>
+              );
+              return (
+                <div className="dropdown">
+                  <button className="dd-head" onClick={() => setYouthOpen(o => !o)}>
+                    <span>
+                      <span className="dd-title">Academy · U23 &amp; Primavera</span>
+                      <span className="dd-sub">{youth.length} players · {hot.length} with active interest · sale is near-pure profit</span>
+                    </span>
+                    <span className={"dd-arrow" + (youthOpen ? " open" : "")}>›</span>
+                  </button>
+                  {youthOpen && (
+                    <div className="dd-body">
+                      {hot.length > 0 && <>
+                        <div className="dd-tab hot">Transfer talk right now</div>
+                        {hot.map(YRow)}
+                      </>}
+                      {rest.length > 0 && <>
+                        <div className="dd-tab">Rest of the academy</div>
+                        {rest.map(YRow)}
+                      </>}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        ) : (
+          <div>
+            <div className="prow" style={{ cursor: "default", marginTop: 12 }}>
+              <span className="dot" style={{ background: costColor(annual(sel)) }} />
+              <span className="nm">{sel.name}</span>
+              <button className="pill" style={{ marginInlineStart: "auto", cursor: "pointer", border: "none" }} onClick={() => setSel(null)}>change</button>
+            </div>
+            <div className="seg" style={{ marginTop: 14 }}>
+              {["sell", "loan"].map(m => <button key={m} className={mode === m ? "on" : ""} onClick={() => setMode(m)}>{m === "sell" ? "Sell" : "Loan out"}</button>)}
+            </div>
+
+            {mode === "sell" && (<>
+              {clubs.length > 0 && <div className="clubs">
+                {clubs.map(c => <button key={c} className={"club on"}>{c}</button>)}
+              </div>}
+              <div className="fieldrow">
+                <div className="f"><label>Fee (€M)</label><input type="number" min="0" step="0.5" value={price} onChange={e => setPrice(e.target.value)} /></div>
+                {!link && <div className="f" style={{ justifyContent: "flex-end" }}>
+                  <button className="club" onClick={runCheck} disabled={checking}>Check press{checking && <span className="spin dark" />}</button>
+                </div>}
+              </div>
+              {link && price && Math.abs(dev) >= 0.2 && <div className="hint2 warn">Reported ~{fmtM(link.price)} — you're {dev > 0 ? "above" : "below"} by ~{Math.round(Math.abs(dev) * 100)}%.</div>}
+              {link && price && Math.abs(dev) < 0.2 && <div className="hint2 ok">In line with reports (~{fmtM(link.price)}).</div>}
+              {live?.note && <div className="hint2">{live.note}</div>}
+              <button className="cta dngr" disabled={!price} onClick={() => onApply(sel.id, { mode: "sell", fee: price * 1e6, clubs })}>
+                Sell for {price ? fmtM(price * 1e6) : "—"}
+              </button>
+            </>)}
+
+            {mode === "loan" && (<>
+              <div className="f" style={{ marginTop: 14 }}>
+                <label>Wage covered by receiving club: {cov}%</label>
+                <input className="slider" type="range" min="0" max="100" step="10" value={cov} onChange={e => setCov(+e.target.value)} />
+              </div>
+              <div className="hint2">Inter keeps amortization {fmtM(sel.amort)} + {fmtM(sel.salary * (1 - cov / 100))} wages.</div>
+              <button className="cta" onClick={() => onApply(sel.id, { mode: "loan", coverage: cov })}>Loan out</button>
+            </>)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ===================== SIGN modal — fully manual ===================== */
+function SignModal({ onClose, onShortlist }) {
+  const [name, setName] = useState("");
+  const [pos, setPos] = useState("CM");
+  const [age, setAge] = useState(25);
+  const [free, setFree] = useState(false);
+  const [fee, setFee] = useState("");
+  const [years, setYears] = useState(4);
+  const [net, setNet] = useState("");
+
+  const effFee = free ? 0 : (fee || 0) * 1e6;
+  const gross = (net || 0) * 1e6 * 1.84;
+  const amort = effFee / (years || 1);
+  const annualCost = amort + gross;
+  const ready = name.trim() && years && net !== "" && (free || fee !== "");
+
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <button className="close" onClick={onClose}>✕</button>
+        <h3>Sign a player</h3>
+        <div className="sub">Name anyone you like and set the terms. The annual cost updates as you type — that's the number the cap actually sees.</div>
+
+        <div className="f" style={{ marginTop: 16 }}>
+          <label>Player</label>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Who are you signing?" autoFocus />
+        </div>
+
+        <div className="fieldrow">
+          <div className="f">
+            <label>Position</label>
+            <select value={pos} onChange={e => setPos(e.target.value)}>
+              {["GK", "CB", "RWB", "LWB", "DM", "CM", "ST"].map(o => <option key={o} value={o}>{POS[o]}</option>)}
+            </select>
+          </div>
+          <div className="f">
+            <label>Age</label>
+            <input type="number" min="16" max="40" value={age} onChange={e => setAge(+e.target.value)} />
+          </div>
+        </div>
+
+        <div className="freerow">
+          <label className="check">
+            <input type="checkbox" checked={free} onChange={e => { setFree(e.target.checked); if (e.target.checked) setFee(""); }} />
+            <span>Free agent — no transfer fee</span>
+          </label>
+        </div>
+
+        <div className="fieldrow">
+          <div className="f">
+            <label>Fee (€M){free ? " · free" : ""}</label>
+            <input type="number" min="0" step="0.5" value={free ? 0 : fee} disabled={free}
+              onChange={e => setFee(e.target.value)} placeholder="30"
+              style={free ? { opacity: .5 } : undefined} />
+          </div>
+          <div className="f">
+            <label>Contract (yrs)</label>
+            <input type="number" min="1" max="6" value={years} onChange={e => setYears(+e.target.value)} />
+          </div>
+          <div className="f">
+            <label>Net wage (€M/yr)</label>
+            <input type="number" min="0" step="0.1" value={net} onChange={e => setNet(e.target.value)} placeholder="3" />
+          </div>
+        </div>
+
+        {!free && fee !== "" && (
+          <div className="hint2 warn" style={{ marginTop: 10 }}>
+            <b>Use the base fee, not the fee plus add-ons.</b> Bonuses are contingent — a club only
+            capitalises them once they're likely to be paid, or once they're actually triggered. Inter's
+            published amortisation runs on the base fee, so that's what the cap sees. Agent commissions
+            are left out too.
+          </div>
+        )}
+        <div className="hint2">
+          Gross wage {fmtM(gross)} · amortization {fmtM(amort)} · <b>annual cost {fmtM(annualCost)}</b>
+          <div style={{ marginTop: 6, opacity: .82 }}>
+            {free
+              ? `No fee, so nothing to amortise — the €${net || 0}M net becomes €${(gross / 1e6).toFixed(1)}M gross after Italian tax (×1.84), and that gross figure is the whole annual cost.`
+              : `The €${fee || 0}M fee spread over ${years} years is €${(amort / 1e6).toFixed(1)}M of amortisation a year. Add the €${net || 0}M net wage — €${(gross / 1e6).toFixed(1)}M gross after tax — and that's what hits the cap.`}
+          </div>
+        </div>
+
+        <button className="cta" disabled={!ready}
+          onClick={() => onShortlist({
+            id: "sign_" + Date.now(),
+            name: name.trim(), pos, age,
+            fee: effFee, years, salary: gross, net: (net || 0) * 1e6,
+            free,
+            src: free ? "Free agent" : "Signed on your terms",
+          })}>
+          ＋ Add to shortlist
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ===================== EXTEND modal ===================== */
+// Extending: remaining book value spread over MORE years → lower amortization/yr.
+// But a new deal usually means a wage rise. We model both.
+function ExtendModal({ players, extensions, onClose, onApply }) {
+  // remaining contract years drive both the sort and the amortization maths
+  const remainOf = p => Math.max(1, ((contractOf(p) || 2028)) - 2026);
+  // sorted by contract expiry — the most urgent renewals first
+  const eligible = players
+    .filter(p => p.zone !== "exit" && p.amort > 0)
+    .sort((a, b) => remainOf(a) - remainOf(b) || annual(b) - annual(a));
+  const [sel, setSel] = useState(null);
+  const [addYears, setAddYears] = useState(2);
+  const [raise, setRaise] = useState(10); // % wage rise
+
+  const pick = p => { setSel(p); setAddYears(2); setRaise(10); };
+
+  // remaining book value = amort × years left. Spread it over (left + added) years.
+  const baseRemain = sel ? remainOf(sel) : 2;
+  const newAmort = sel ? (sel.amort * baseRemain) / (baseRemain + addYears) : 0;
+  const newSalary = sel ? sel.salary * (1 + raise / 100) : 0;
+  const oldCost = sel ? sel.amort + sel.salary : 0;
+  const newCost = newAmort + newSalary;
+  const delta = newCost - oldCost;
+
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <button className="close" onClick={onClose}>✕</button>
+        <h3>Extend a contract</h3>
+        <div className="sub">Sorted by expiry — the most urgent first. A longer deal spreads the remaining fee over more years (lower amortization) but usually raises the wage.</div>
+
+        {!sel ? (
+          <div className="plist">
+            {eligible.map(p => {
+              const ext = extensions[p.id];
+              const until = contractOf(p);
+              const left = remainOf(p);
+              const urgent = left <= 1;
+              return (
+                <button className="prow" key={p.id} onClick={() => pick(p)}>
+                  <span className="dot" style={{ background: urgent ? "var(--red)" : costColor(annual(p)) }} />
+                  <span style={{ minWidth: 0 }}>
+                    <span className="nm">{p.name}{ext ? " ✓" : ""}</span><br />
+                    <span className="meta">
+                      amort {fmtM(p.amort)} · wage {fmtM(p.salary)}
+                    </span>
+                  </span>
+                  <span className="r" style={{ textAlign: "end" }}>
+                    <span style={{ color: urgent ? "var(--red)" : "var(--ink)" }}>
+                      {until ? "until " + until : "—"}
+                    </span>
+                    <br /><span className="meta">{left} yr{left === 1 ? "" : "s"} left</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div>
+            <div className="prow" style={{ cursor: "default", marginTop: 12 }}>
+              <span className="dot" style={{ background: costColor(annual(sel)) }} />
+              <span><span className="nm">{sel.name}</span><br />
+                <span className="meta">Contract until {contractOf(sel) || "—"} · {baseRemain} yr{baseRemain === 1 ? "" : "s"} left</span></span>
+              <button className="pill" style={{ marginInlineStart: "auto", cursor: "pointer", border: "none" }} onClick={() => setSel(null)}>change</button>
+            </div>
+            <div className="f" style={{ marginTop: 14 }}>
+              <label>Add years: +{addYears} → new expiry {((contractOf(sel) || 2028)) + addYears}</label>
+              <input className="slider" type="range" min="1" max="4" step="1" value={addYears} onChange={e => setAddYears(+e.target.value)} />
+            </div>
+            <div className="f" style={{ marginTop: 10 }}>
+              <label>Wage change on new deal: {raise > 0 ? "+" : ""}{raise}%</label>
+              <input className="slider" type="range" min="-10" max="40" step="5" value={raise} onChange={e => setRaise(+e.target.value)} />
+            </div>
+            <div className="hint2">
+              Amortization {fmtM(sel.amort)} → <b>{fmtM(newAmort)}</b> · wage {fmtM(sel.salary)} → <b>{fmtM(newSalary)}</b><br />
+              Annual cost {fmtM(oldCost)} → <b style={{ color: delta > 0 ? "var(--red)" : "var(--green)" }}>{fmtM(newCost)}</b> ({delta > 0 ? "+" : ""}{fmtM(delta)})
+              <div style={{ marginTop: 6, opacity: .82 }}>
+                The remaining book value ({fmtM(sel.amort)} × {baseRemain}yr) now spreads over {baseRemain + addYears} years, so amortization drops — but the wage rise{delta > 0 ? " outweighs it" : " doesn't cancel the saving"}.
+              </div>
+            </div>
+            <button className="cta" onClick={() => onApply(sel.id, { amort: newAmort, salary: newSalary, addYears, raise })}>Apply extension</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* status line + info popover for any player */
+function statusOf(p) {
+  const net = Math.round(p.salary / p.mult / 1e5) / 10;
+  const bits = [];
+  if (p.signed || p.newSigning) bits.push({ t: p.newSigning ? "Signed by you" : "New signing", c: "var(--gold)", ic: "★" });
+  if (p.pending) bits.push({ t: "Not formally done", c: "#E06C34", ic: "!" });
+  if (p.tier) bits.push({ t: p.tier === "u23" ? "U23 squad" : "Primavera", c: p.tier === "u23" ? "var(--blue2)" : "#6E43C4", ic: "◎" });
+  if (p.zone === "exit") {
+    if (p.exit?.mode === "sell") bits.push({ t: "Sold — " + fmtM(p.exit.fee), c: "var(--red)", ic: "→" });
+    else if (p.exit?.mode === "loan") bits.push({ t: "Loaned out", c: "var(--blue2)", ic: "→" });
+    else bits.push({ t: "Released", c: "var(--red)", ic: "→" });
+  }
+  return { bits, net };
+}
+
+function Popover({ data, viewOnly, onSell, onReturn, onExtend, onClose }) {
+  const { player: p } = data;
+  const { bits, net } = statusOf(p);
+  const [mode, setMode] = useState(null); // null | 'sell' | 'loan' | 'extend'
+  const [fee, setFee] = useState(p.value ? p.value / 1e6 : "");
+  const [cov, setCov] = useState(100);
+  const [addYears, setAddYears] = useState(2);
+  const [raise, setRaise] = useState(10);
+  const isExiting = p.zone === "exit";
+
+  // extension maths: remaining book value spread over more years
+  const remain = Math.max(1, ((contractOf(p) || 2028)) - 2026);
+  const newAmort = (p.amort * remain) / (remain + addYears);
+  const newSalary = p.salary * (1 + raise / 100);
+  const extDelta = (newAmort + newSalary) - (p.amort + p.salary);
+
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet pop-sheet" onClick={e => e.stopPropagation()}>
+        <button className="close" onClick={onClose}>✕</button>
+        <div className="pop-head2">
+          <span className="pop-name2">{p.name}</span>
+          <span className="pop-pos2">{POS[p.pos]} · age {p.age}</span>
+        </div>
+        {bits.length > 0 && <div className="pop-status">
+          {bits.map((b, i) => <span key={i} className="pop-badge" style={{ color: b.c, borderColor: b.c }}>{b.ic} {b.t}</span>)}
+        </div>}
+        <div className="pop-rows">
+          <div><span>Annual cost</span><b style={{ color: costColor(annual(p)) }}>{fmtM(annual(p))}</b></div>
+          <div><span>Amortization</span><b>{fmtM(p.amort)}</b></div>
+          <div><span>Wage</span><b>{fmtM(p.salary)} gross · €{net}M net</b></div>
+          {(contractOf(p)) ? <div><span>Contract until</span><b>June {contractOf(p)}</b></div> : null}
+          {p.value ? <div><span>Market value</span><b>~{fmtM(p.value)}</b></div> : null}
+        </div>
+        {(() => {
+          const link = talkFor(p);
+          if (!link && !p.note) return null;
+          return (
+            <div className="talk">
+              <div className="talk-head">
+                <span className="talk-title">Transfer talk</span>
+                {link?.type && <span className="talk-type" style={{
+                  color: link.type === "Not for sale" ? "var(--green)" : link.type === "Listed for sale" ? "#E06C34" : "var(--blue2)",
+                  borderColor: link.type === "Not for sale" ? "var(--green)" : link.type === "Listed for sale" ? "#E06C34" : "var(--blue2)",
+                }}>{link.type}</span>}
+              </div>
+              {link?.price ? (
+                <div className="talk-price"><span>Reported price</span><b>~{fmtM(link.price)}</b></div>
+              ) : null}
+              {link?.clubs?.length > 0 && (
+                <div className="clubs">{link.clubs.map(c => <span key={c} className="club-tag">{c}</span>)}</div>
+              )}
+              <div className="talk-body">{link?.talk || p.note}</div>
+            </div>
+          );
+        })()}
+
+        {isExiting ? (
+          <div style={{ marginTop: 14 }}>
+            <div className="hint2">Currently {p.exit?.mode === "sell" ? "sold for " + fmtM(p.exit.fee) : p.exit?.mode === "loan" ? "loaned out" : "released"}.</div>
+            <button className="cta" style={{ background: "var(--ink)" }} onClick={() => onClose(p.id, "undo")}>Keep at the club</button>
+          </div>
+        ) : p.newSigning ? (
+          <div style={{ marginTop: 14 }}>
+            <button className="cta" style={{ background: "var(--ink)" }} onClick={() => onReturn(p.id)}>↩ Return to shortlist</button>
+            <div className="pop-hint">This player was signed in the simulator — send them back to reconsider.</div>
+          </div>
+        ) : viewOnly ? null : !mode ? (
+          <div className="pop-actions">
+            <button className="cta dngr" onClick={() => setMode("sell")}>Sell</button>
+            <button className="cta ghost2" onClick={() => setMode("loan")}>Loan</button>
+            {p.amort > 0 && <button className="cta" style={{ background: "#6E43C4" }} onClick={() => setMode("extend")}>Extend</button>}
+          </div>
+        ) : mode === "sell" ? (
+          <div style={{ marginTop: 12 }}>
+            <div className="f"><label>Sale fee (€M)</label><input type="number" min="0" step="0.5" value={fee} onChange={e => setFee(e.target.value)} autoFocus /></div>
+            {p.value && fee && Math.abs((fee * 1e6 - p.value) / p.value) >= 0.2 &&
+              <div className="hint2 warn">Market value ~{fmtM(p.value)} — you're {fee * 1e6 > p.value ? "above" : "below"} by ~{Math.round(Math.abs((fee * 1e6 - p.value) / p.value) * 100)}%.</div>}
+            <div className="pop-actions">
+              <button className="cta dngr" disabled={fee === ""} onClick={() => onSell(p.id, { mode: "sell", fee: fee * 1e6 })}>Confirm sale</button>
+              <button className="cta ghost2" onClick={() => setMode(null)}>Back</button>
+            </div>
+          </div>
+        ) : mode === "extend" ? (
+          <div style={{ marginTop: 12 }}>
+            <div className="f">
+              <label>Add years: +{addYears} → contract until June {((contractOf(p) || 2028)) + addYears}</label>
+              <input className="slider" type="range" min="1" max="4" step="1" value={addYears} onChange={e => setAddYears(+e.target.value)} />
+            </div>
+            <div className="f" style={{ marginTop: 8 }}>
+              <label>Wage change: {raise > 0 ? "+" : ""}{raise}%</label>
+              <input className="slider" type="range" min="-10" max="40" step="5" value={raise} onChange={e => setRaise(+e.target.value)} />
+            </div>
+            <div className="hint2">
+              Amortization {fmtM(p.amort)} → <b>{fmtM(newAmort)}</b> · wage {fmtM(p.salary)} → <b>{fmtM(newSalary)}</b><br />
+              Annual cost {fmtM(p.amort + p.salary)} → <b style={{ color: extDelta > 0 ? "var(--red)" : "var(--green)" }}>{fmtM(newAmort + newSalary)}</b> ({extDelta > 0 ? "+" : ""}{fmtM(extDelta)})
+            </div>
+            <div className="pop-actions">
+              <button className="cta" style={{ background: "#6E43C4" }} onClick={() => onExtend(p.id, { amort: newAmort, salary: newSalary, addYears, raise })}>Apply extension</button>
+              <button className="cta ghost2" onClick={() => setMode(null)}>Back</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginTop: 12 }}>
+            <div className="f"><label>Wage covered by receiving club: {cov}%</label>
+              <input className="slider" type="range" min="0" max="100" step="10" value={cov} onChange={e => setCov(+e.target.value)} /></div>
+            <div className="hint2">Inter keeps amortization {fmtM(p.amort)} + {fmtM(p.salary * (1 - cov / 100))} wages.</div>
+            <div className="pop-actions">
+              <button className="cta" onClick={() => onSell(p.id, { mode: "loan", coverage: cov })}>Confirm loan</button>
+              <button className="cta ghost2" onClick={() => setMode(null)}>Back</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+/* ===================== BREAKDOWN MODALS ===================== */
+function CostBreakdown({ players, onClose }) {
+  const [sort, setSort] = useState("cost"); // cost | pos | until | age | wage
+  const [asc, setAsc] = useState(false);
+  const rows = players.filter(p => !p.tier && annual(p) > 0);
+  const posRank = { GK: 0, LCB: 1, CB: 2, RCB: 3, LWB: 4, RWB: 5, LM: 6, DM: 7, CM: 8, RM: 9, ST: 10 };
+  const val = p => ({
+    cost: annual(p), wage: p.salary, amort: p.amort, age: p.age,
+    pos: posRank[p.pos] ?? 99, until: (contractOf(p) || 9999),
+  }[sort]);
+  const sorted = [...rows].sort((a, b) => {
+    const d = val(a) - val(b);
+    return (asc ? d : -d) || annual(b) - annual(a);
+  });
+  const total = rows.reduce((s, p) => s + annual(p), 0);
+  const head = (key, label) => (
+    <th className={sort === key ? "on" : ""} onClick={() => { sort === key ? setAsc(a => !a) : (setSort(key), setAsc(key === "pos" || key === "until" || key === "age")); }}>
+      {label}{sort === key ? (asc ? " ↑" : " ↓") : ""}
+    </th>
+  );
+
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet wide" onClick={e => e.stopPropagation()}>
+        <button className="close" onClick={onClose}>✕</button>
+        <h3>Squad cost breakdown</h3>
+        <div className="sub">Annual cost = amortization + gross wage. Total <b>{fmtM(total)}</b> against the {fmtM(CAP)} cap. Tap a column to sort.</div>
+        <div className="tbl-wrap">
+          <table className="tbl">
+            <thead><tr>
+              {head("cost", "Player")}
+              {head("pos", "Pos")}
+              {head("age", "Age")}
+              {head("until", "Until")}
+              {head("amort", "Amort")}
+              {head("wage", "Wage")}
+              {head("cost", "Cost/yr")}
+            </tr></thead>
+            <tbody>
+              {sorted.map(p => {
+                const a = annual(p);
+                const out = p.zone === "exit";
+                return (
+                  <tr key={p.id} className={out ? "dim" : ""}>
+                    <td className="pname">{p.name}{out && <span className="outtag">out</span>}</td>
+                    <td className="mut">{POS[p.pos]}</td>
+                    <td className="mut">{p.age}</td>
+                    <td className="mut">{contractOf(p) || "—"}</td>
+                    <td className="num mut">{fmtM(p.amort)}</td>
+                    <td className="num mut">{fmtM(p.salary)}</td>
+                    <td className="num strong" style={{ color: costColor(a) }}>{fmtM(a)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot><tr>
+              <td colSpan={6}>Total · {rows.length} players</td>
+              <td className="num strong">{fmtM(total)}</td>
+            </tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CashBreakdown({ lines, total, onClose }) {
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <button className="close" onClick={onClose}>✕</button>
+        <h3>Net transfer spend</h3>
+        <div className="sub">Money in from sales, money out on fees. Floor is {fmtM(CASH_FLOOR)}.</div>
+        <div className="tbl-wrap" style={{ marginTop: 14 }}>
+          <table className="tbl">
+            <tbody>
+              {lines.map((l, i) => (
+                <tr key={i}>
+                  <td className="pname">{l.name}</td>
+                  <td className="mut">{l.detail}</td>
+                  <td className="num strong" style={{ color: l.amount >= 0 ? "var(--green)" : "var(--red)" }}>
+                    {l.amount >= 0 ? "+" : "−"}{fmtM(Math.abs(l.amount))}
+                  </td>
+                </tr>
+              ))}
+              {lines.length === 0 && <tr><td colSpan={3} className="mut" style={{ padding: 14, textAlign: "center" }}>No transfer activity yet.</td></tr>}
+            </tbody>
+            <tfoot><tr>
+              <td colSpan={2}>Net balance</td>
+              <td className="num strong" style={{ color: total < CASH_FLOOR ? "var(--red)" : "var(--ink)" }}>
+                {total >= 0 ? "+" : "−"}{fmtM(Math.abs(total))}
+              </td>
+            </tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   SAVE & SHARE
+
+   A fan's squad is theirs alone — it never touches the cloud. It's kept in
+   this browser so closing the tab doesn't throw the work away, and it can be
+   folded into a URL so they can send it to someone.
+
+   The link carries only what the fan changed (sold, signed, extended), not the
+   whole squad — the base squad comes from squad.json at the other end. That
+   keeps the URL short enough to paste into a message.
+   ============================================================ */
+const SAVE_KEY = "mercato.squad.v1";
+
+const encodeState = st => {
+  try {
+    const json = JSON.stringify(st);
+    return btoa(unescape(encodeURIComponent(json)))
+      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  } catch { return ""; }
+};
+const decodeState = s => {
+  try {
+    const b = s.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(decodeURIComponent(escape(atob(b))));
+  } catch { return null; }
+};
+
+/* everything the fan changed, and nothing else */
+const packState = ({ players, signed, extensions, ledger, name }) => ({
+  n: name || "",
+  x: players.filter(p => p.zone === "exit").map(p => ({
+    i: p.id, m: p.exit?.mode, f: p.exit?.fee || 0, c: p.exit?.coverage,
+  })),
+  s: Object.entries(signed).map(([id, v]) => ({
+    i: id, n: v.name, p: v.pos, a: v.age || 25, f: v.fee, y: v.years, w: v.salary,
+  })),
+  e: Object.entries(extensions).map(([id, v]) => ({ i: id, a: v.amort, w: v.salary, y: v.addYears })),
+});
+
+
+/* Beppe Marotta */
+const DIRECTORS = "data:image/jpeg;base64,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";
+
+/* ===================== SPLASH ===================== */
+function Splash({ onPlay }) {
+  const [method, setMethod] = useState(false);
+  return (
+    <div className="splash">
+      <div className="sp-photo">
+        <img src={DIRECTORS} alt="Beppe Marotta" />
+      </div>
+      <div className="sp-body">
+        <h1>Build the Nerazzurri</h1>
+        <p>
+          Marotta and Ausilio have to build next season's Inter without breaking the club.
+          Every player costs two things — the annual amortisation of his transfer fee, spread across
+          the years of his contract, and his wage. Sell, sign, extend, and see whether the books still balance.
+        </p>
+        <button className="sp-play" onClick={onPlay}>Play</button>
+        <button className="sp-method" onClick={() => setMethod(true)}>How the numbers work</button>
+      </div>
+      {method && <MethodModal onClose={() => setMethod(false)} />}
+    </div>
+  );
+}
+
+/* ===================== METHOD ===================== */
+function MethodModal({ onClose }) {
+  const [open, setOpen] = useState("cost");
+  const Row = ({ id, q, children }) => (
+    <div className={"acc" + (open === id ? " on" : "")}>
+      <button className="acc-q" onClick={() => setOpen(open === id ? "" : id)}>
+        <span>{q}</span><span className="acc-x">{open === id ? "−" : "+"}</span>
+      </button>
+      {open === id && <div className="acc-a">{children}</div>}
+    </div>
+  );
+
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet wide" onClick={e => e.stopPropagation()}>
+        <button className="close" onClick={onClose}>✕</button>
+        <h3>How the numbers work</h3>
+        <div className="sub">Every figure here is either published or derived from a published one. If someone tells you a number looks wrong, this is where to check.</div>
+
+        <div className="method">
+          <Row id="cost" q="What does a player actually cost?">
+            <p><b>Annual cost = amortisation + gross wage.</b> Not the transfer fee — that's cash, and it's a separate meter.</p>
+            <p>A transfer fee is capitalised and written off across the contract. Sign someone for €30M on a five-year deal and the books carry €6M a year, every year, whether he plays or not. Add his gross wage and you have what he costs the club that season.</p>
+            <p>This is the method <b>Calcio e Finanza</b> use for their Serie A squad-cost tables: <i>"stipendi lordi + quota ammortamento per ogni singolo calciatore"</i> — gross wages plus each player's amortisation share. The totals here track theirs closely.</p>
+          </Row>
+
+          <Row id="wages" q="Where do the wages come from?">
+            <p><b>Capology</b> and <b>Calcio e Finanza</b>, and they're <b>gross</b> — which is what the cap counts and what those tables publish.</p>
+            <p>Net is shown too, but the ratio isn't uniform. Players who still qualify for Italy's <b>Decreto Crescita</b> tax break convert at roughly ×1.5; everyone else at ×1.84. That's why Lautaro and Barella aren't on the same multiplier as Çalhanoğlu.</p>
+            <p>When you sign someone, you enter <b>net</b> — the number clubs actually negotiate — and it's grossed up at ×1.84 for the cap.</p>
+          </Row>
+
+          <Row id="bonus" q="What about add-ons and bonuses?">
+            <p><b>We use the base fee.</b> €25M plus bonuses is entered as €25M.</p>
+            <p>This one's genuinely contested, so here's the full picture. Under IFRS there are <b>three acceptable treatments</b> of contingent fees, and the IFRS Interpretations Committee explicitly failed to reach consensus. Manchester United capitalise the present value of add-ons they judge <i>probable</i> (over 50% likely) into the cost of the registration — so for them, bonuses do lift amortisation. Other clubs only add them once they're actually triggered.</p>
+            <p>We follow the base fee because that's what Inter's published amortisation runs on, and therefore what the €192.3M cap we're measuring against is built from. Mixing a bonus-inclusive fee into a bonus-exclusive cap would quietly break the comparison.</p>
+            <p>A separate thing that gets called a bonus: a <b>sign-on fee paid to the player</b>. That's an employee cost — it belongs in wages, never in amortisation.</p>
+            <p><b>Agent commissions are excluded</b>, which is also what Calcio e Finanza do.</p>
+          </Row>
+
+          <Row id="buyback" q="Why is Stanković only €2.6M a year?">
+            <p>Because a buy-back doesn't book at the headline fee.</p>
+            <p>Inter sold him to Brugge for €10M, then bought him back for €23M. The €10M was already recognised as a gain when he left. What lands on the books now is the <b>net of the two deals — €13M</b> — spread over his five-year contract. €2.6M a year, not €4.6M.</p>
+            <p>In the cash meter he still shows as the full €23M out, because that's what actually left the bank. The two meters disagree, and they're both right — that gap is the whole point of the exercise.</p>
+          </Row>
+
+          <Row id="youth" q="Why doesn't selling an academy player cut the wage bill?">
+            <p>Because he was never on it. U23 and Primavera wages sit outside the registered senior squad, so they don't touch the cost cap.</p>
+            <p>But he cost nothing to sign, so his book value is roughly zero — which means <b>selling him is almost pure profit</b>. He's a lever on the cash balance, not on the wage bill. It's exactly why Italian clubs sell academy players in late June, and why the academy is worth ~€40M here.</p>
+          </Row>
+
+          <Row id="caps" q="Where do the two limits come from?">
+            <p><b>€192.3M squad cost</b> — what the 25/26 squad cost. The assumption is that Inter spend no more next season than they did last, which is roughly how the club has been operating under Oaktree.</p>
+            <p><b>−€50M net spend</b> — the reported ceiling on how far Inter will go beyond what they bring in. Sales fund signings.</p>
+            <p>These are assumptions, not laws. They're the frame for the exercise, not a UEFA regulation.</p>
+          </Row>
+
+          <Row id="stale" q="Where does the squad data come from?">
+            <p><b>Transfers and contracts:</b> Inter's official announcements first, then Fabrizio Romano / Sky Sport Italia and Di Marzio for anything the club hasn't posted yet.</p>
+            <p><b>Fees:</b> Transfermarkt, which is reliable on the numbers — though its ledger needs reading with some judgement. A player who comes back off loan and is sold a week later shows up as two separate movements, when the only thing that matters here is that he left.</p>
+            <p><b>Wages and amortisation:</b> Capology and Calcio e Finanza.</p>
+            <p>Departures and renewals are entered by hand rather than scraped. A feed that confidently invents a transfer does more damage than one that's a day behind.</p>
+          </Row>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===================== SHARE ===================== */
+function ShareModal({ state, cost, cash, moves, onClose }) {
+  const [name, setName] = useState(state.n || "");
+  const [copied, setCopied] = useState(false);
+
+  const link = useMemo(() => {
+    const st = { ...state, n: name.trim() };
+    const base = window.location.origin + window.location.pathname;
+    return base + "#s=" + encodeState(st);
+  }, [state, name]);
+
+  const title = name.trim() ? `${name.trim()}'s Inter` : "An Inter squad";
+
+  const copy = () => {
+    navigator.clipboard?.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2200);
+  };
+  const share = () => {
+    if (navigator.share) {
+      navigator.share({ title, text: `${title} — ${fmtM(cost)} squad cost, ${moves} moves. Take a look.`, url: link });
+    } else copy();
+  };
+
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>
+        <button className="close" onClick={onClose}>✕</button>
+        <h3>Share your squad</h3>
+        <div className="sub">The link carries your squad inside it — no account, nothing stored anywhere. Whoever opens it sees exactly what you built.</div>
+
+        <div className="f" style={{ marginTop: 16 }}>
+          <label>Name it (optional)</label>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Leave blank if you'd rather not" maxLength={28} />
+        </div>
+
+        <div className="share-card">
+          <div className="sc-title">{title}</div>
+          <div className="sc-stats">
+            <span><b style={{ color: cost > CAP ? "var(--red)" : "var(--ink)" }}>{fmtM(cost)}</b>squad cost</span>
+            <span><b>{(cash >= 0 ? "+" : "") + fmtM(cash)}</b>net spend</span>
+            <span><b>{moves}</b>{moves === 1 ? "move" : "moves"}</span>
+          </div>
+        </div>
+
+        <div className="pop-actions">
+          <button className="cta" onClick={share}>{navigator.share ? "Share" : (copied ? "✓ Copied" : "Copy link")}</button>
+          {navigator.share && <button className="cta ghost2" onClick={copy}>{copied ? "✓ Copied" : "Copy link"}</button>}
+        </div>
+        <div className="pop-hint">Long links are normal — the whole squad is folded into it.</div>
+      </div>
+    </div>
+  );
+}
+
+/* ===================== SHORTLIST ROW ===================== */
+function ShortlistRow({ t, onUpdate, onSign, onRemove }) {
+  const [open, setOpen] = useState(false);
+  const [fee, setFee] = useState(t.free ? 0 : (t.fee || 0) / 1e6);
+  const [years, setYears] = useState(t.years || 4);
+  const [net, setNet] = useState(t.net != null ? t.net / 1e6 : (t.salary / 1.84 / 1e6));
+
+  const gross = (net || 0) * 1e6 * 1.84;
+  const effFee = t.free ? 0 : (fee || 0) * 1e6;
+  const annualCost = effFee / (years || 1) + gross;
+
+  const save = () => {
+    onUpdate(t.id, { fee: effFee, years, net: (net || 0) * 1e6, salary: gross });
+    setOpen(false);
+  };
+
+  return (
+    <div style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", marginBottom: 7, overflow: "hidden" }}>
+      <div className="crow" style={{ boxShadow: "none", marginBottom: 0 }}>
+        <span className="nm">{t.name}</span>
+        <span className="tag" style={{ background: "#EAF1FD", color: "var(--blue2)" }}>
+          {POS[t.pos]} · {t.free ? "free" : fmtM(effFee)}
+        </span>
+        <span className="r">
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtM(annualCost)}/yr</span>
+          <button className="undo" onClick={() => setOpen(o => !o)}>{open ? "Close" : "Edit"}</button>
+          <button className="undo" style={{ background: "var(--blue)", color: "#fff" }}
+            onClick={() => onSign({ ...t, fee: effFee, years, salary: gross, net: (net || 0) * 1e6 })}>Sign</button>
+          <button className="undo" onClick={() => onRemove(t.id)}>Remove</button>
+        </span>
+      </div>
+      {open && (
+        <div style={{ padding: "0 14px 14px" }}>
+          <div className="fieldrow">
+            <div className="f">
+              <label>Fee (€M){t.free ? " · free" : ""}</label>
+              <input type="number" min="0" step="0.5" value={t.free ? 0 : fee} disabled={t.free}
+                onChange={e => setFee(e.target.value)} style={t.free ? { opacity: .55 } : undefined} />
+            </div>
+            <div className="f">
+              <label>Contract (yrs)</label>
+              <input type="number" min="1" max="6" value={years} onChange={e => setYears(+e.target.value)} />
+            </div>
+            <div className="f">
+              <label>Net wage (€M/yr)</label>
+              <input type="number" min="0" step="0.1" value={net} onChange={e => setNet(e.target.value)} />
+            </div>
+          </div>
+          <div className="hint2">
+            Gross wage {fmtM(gross)} · amortisation {fmtM(effFee / (years || 1))} · <b>annual cost {fmtM(annualCost)}</b>
+          </div>
+          <button className="cta" onClick={save}>Save changes</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ===================== APP ===================== */
+function App() {
+  const [players, setPlayers] = useState(() => [...SQUAD, ...YOUTH].map(p => ({ ...p, zone: "field" })));
+  const [ledger, setLedger] = useState(DONE);
+  const [source, setSource] = useState({ from: "built-in", asOf: null });
+  const [squadName, setSquadName] = useState("");
+  const [viewOnly, setViewOnly] = useState(false);   // arrived via a shared link
+  const [restored, setRestored] = useState(false);   // picked up an unfinished session
+  const [started, setStarted] = useState(() => /[#&]s=/.test(window.location.hash || ""));
+  const [signed, setSigned] = useState({});
+  const [shortlist, setShortlist] = useState([]); // array of target objects {id,name,pos,fee,years,salary,net,free,value,src,wageLogic}
+  const [extensions, setExtensions] = useState({});
+  const [modal, setModal] = useState(null); // 'sign'|'extend'
+  const [popover, setPopover] = useState(null); // {player, x, y}
+
+  const applied = players.map(p => extensions[p.id] ? { ...p, amort: extensions[p.id].amort, salary: extensions[p.id].salary } : p);
+
+  // squad.json wins if it's there; otherwise the built-in squad stands.
+  const loaded = useRef(false);
+  useEffect(() => {
+    if (loaded.current) return;
+    loaded.current = true;
+    fetch(SQUAD_URL + "?t=" + Date.now())
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(d => {
+        if (!Array.isArray(d.squad) || !d.squad.length) return;
+        const live = d.squad.filter(p => !p.gone);
+        STORE.until = Object.fromEntries(live.filter(p => p.until).map(p => [p.id, p.until]));
+        STORE.talk = d.talk || {};
+        const base = live.map(p => ({ ...p, role: p.spot ? "start" : "bench", zone: "field" }));
+        setPlayers(base);
+        if (Array.isArray(d.cash)) {
+          setLedger(d.cash.map(c => ({ name: c.name, detail: c.detail, cash: c.amount })));
+        }
+        setSource({ from: "squad.json", asOf: d.asOf || null });
+        hydrate(base);
+      })
+      .catch(() => {
+        // no squad.json — the built-in squad stands
+        hydrate([...SQUAD, ...YOUTH].map(p => ({ ...p, zone: "field" })));
+      });
+  }, []);
+
+  /* a shared link wins; otherwise pick up where they left off */
+  const hydrate = base => {
+    const hash = window.location.hash || "";
+    const m = hash.match(/[#&]s=([^&]+)/);
+    if (m) {
+      const st = decodeState(m[1]);
+      if (st) { applyPacked(st, base); setViewOnly(true); return; }
+    }
+    const saved = localStorage.getItem(SAVE_KEY);
+    if (saved) {
+      const st = decodeState(saved);
+      if (st && ((st.x || []).length || (st.s || []).length || (st.e || []).length)) {
+        applyPacked(st, base);
+        setRestored(true);
+      }
+    }
+  };
+
+  /* apply a packed state (from a link, or from the last session) onto the squad */
+  const applyPacked = (st, base) => {
+    if (st.n) setSquadName(st.n);
+    let next = [...base];
+    const extraLedger = [];
+
+    (st.s || []).forEach(a => {
+      if (next.some(p => p.id === a.i)) return;
+      next.push({
+        id: a.i, name: a.n, pos: a.p, age: a.a,
+        amort: (a.f || 0) / (a.y || 1), salary: a.w, mult: 1.84,
+        role: "bench", zone: "field", newSigning: true,
+        until: new Date().getFullYear() + (a.y || 4),
+      });
+      setSigned(o => ({ ...o, [a.i]: { fee: a.f, years: a.y, salary: a.w, name: a.n, pos: a.p } }));
+    });
+
+    (st.x || []).forEach(d => {
+      next = next.map(p => p.id === d.i
+        ? { ...p, zone: "exit", exit: { mode: d.m, fee: d.f, coverage: d.c } }
+        : p);
+    });
+
+    if (st.e?.length) {
+      setExtensions(Object.fromEntries(st.e.map(e => [e.i, { amort: e.a, salary: e.w, addYears: e.y, raise: 0 }])));
+    }
+
+    setPlayers(next);
+  };
+
+  /* keep the fan's work between visits — closing the tab shouldn't cost them the squad */
+  useEffect(() => {
+    if (viewOnly || !loaded.current) return;
+    const st = packState({ players, signed, extensions, ledger, name: squadName });
+    const touched = st.x.length || st.s.length || st.e.length;
+    if (touched) localStorage.setItem(SAVE_KEY, encodeState(st));
+    else localStorage.removeItem(SAVE_KEY);
+  }, [players, signed, extensions, squadName, viewOnly]);
+
+  const handleTap = (id, pt) => {
+    const p = applied.find(x => x.id === id);
+    if (p) setPopover({ player: p, x: pt.x, y: pt.y });
+  };
+  const { dragId, start } = useDrag(null, handleTap);
+
+  // sell / loan directly from the popover
+  const sellPlayer = (id, exit) => { setPlayers(prev => prev.map(p => p.id === id ? { ...p, zone: "exit", exit } : p)); setPopover(null); };
+  const undo = id => setPlayers(prev => prev.map(p => p.id === id ? { ...p, zone: "field", exit: undefined } : p));
+
+  // shortlist → confirm signing → adds to `signed` and onto the pitch as a player
+  const addToShortlist = t => { setShortlist(prev => prev.some(x => x.id === t.id) ? prev : [...prev, t]); };
+  const updateShortlist = (id, patch) => setShortlist(prev => prev.map(x => x.id === id ? { ...x, ...patch } : x));
+  const removeFromShortlist = id => setShortlist(prev => prev.filter(x => x.id !== id));
+  const confirmSigning = t => {
+    setSigned(o => ({ ...o, [t.id]: { fee: t.fee, years: t.years, salary: t.salary, name: t.name, pos: t.pos } }));
+    // place the new signing onto the pitch as a bench player
+    setPlayers(prev => [...prev, {
+      id: t.id, name: t.name, pos: t.pos, age: t.age || 25,
+      amort: t.free ? 0 : (t.fee || 0) / (t.years || 1), salary: t.salary,
+      mult: 1.84, role: "bench", zone: "field", newSigning: true, value: t.value,
+      until: 2026 + (t.years || 4),
+    }]);
+    setShortlist(prev => prev.filter(x => x.id !== t.id));
+  };
+  // return a simulator-signed player back to the shortlist
+  const returnToShortlist = id => {
+    const s = signed[id];
+    setSigned(o => { const n = { ...o }; delete n[id]; return n; });
+    setPlayers(prev => prev.filter(p => p.id !== id));
+    if (s) addToShortlist({ id, name: s.name, pos: s.pos, fee: s.fee, years: s.years, salary: s.salary, free: s.fee === 0 });
+    setPopover(null);
+  };
+
+
+
+  const calc = useMemo(() => {
+    let cost = 0, cash = ledger.reduce((t, d) => t + d.cash, 0), ageSum = 0, n = 0;
+    applied.forEach(p => {
+      // youth wages sit outside the registered senior squad → no squad-cost hit
+      if (!p.tier) {
+        cost += annual(p);
+        if (p.zone !== "exit") { ageSum += p.age; n++; }
+      }
+      // but a youth sale is still cash in (and near-pure capital gain)
+      if (p.zone === "exit" && p.exit?.mode === "sell") cash += p.exit.fee || 0;
+    });
+    Object.values(signed).forEach(s => { cash -= s.fee || 0; });
+    return { cost, cash, avgAge: n ? ageSum / n : 0, size: n };
+  }, [applied, signed, ledger]);
+
+  const overCost = calc.cost > CAP, overCash = calc.cash < CASH_FLOOR;
+  const moveCount = applied.filter(p => p.zone === "exit").length + Object.keys(signed).length + Object.keys(extensions).length;
+
+  // cash ledger: locked deals + user's sales + user's signings
+  const cashLines = [
+    ...ledger.filter(d => d.cash !== 0).map(d => ({ name: d.name, detail: d.detail + " · done", amount: d.cash })),
+    ...applied.filter(p => p.zone === "exit" && p.exit?.mode === "sell")
+      .map(p => ({ name: p.name, detail: "sold by you", amount: p.exit.fee || 0 })),
+    ...Object.values(signed).filter(s => (s.fee || 0) > 0)
+      .map(s => ({ name: s.name, detail: "signed by you", amount: -(s.fee || 0) })),
+  ].sort((a, b) => b.amount - a.amount);
+  const nodes = layout(applied);
+  const exitList = applied.filter(p => p.zone === "exit");
+  const signedList = Object.entries(signed).map(([id, s]) => ({ ...s, id }));
+  const extList = Object.keys(extensions).map(id => SQUAD.find(p => p.id === id)).filter(Boolean);
+
+  if (!started) {
+    return (
+      <>
+        <style>{CSS}</style>
+        <Splash onPlay={() => setStarted(true)} />
+      </>
+    );
+  }
+
+  return (
+    <div className="app">
+      <style>{CSS}</style>
+      <div className="wrap top">
+        <div className="badge">IM</div>
+        <h1>Build the Nerazzurri</h1>
+        {viewOnly
+          ? <p>{squadName ? <><b>{squadName}'s</b> version of Inter.</> : "Someone's version of Inter."} You're looking at a squad a fan built — the moves they made are already in the numbers below.</p>
+          : <p>The 26/27 squad in a 3-5-2. Colour is annual cost — green cheap, red dear. Tap a player to sell, loan or extend.</p>}
+      </div>
+
+      {viewOnly && (
+        <div className="wrap">
+          <div className="viewbar">
+            <span>You're viewing a shared squad.</span>
+            <button onClick={() => {
+              localStorage.removeItem(SAVE_KEY);
+              window.location.hash = "";
+              window.location.reload();
+            }}>Build your own →</button>
+          </div>
+        </div>
+      )}
+      {restored && !viewOnly && (
+        <div className="wrap">
+          <div className="viewbar soft">
+            <span>Picked up where you left off.</span>
+            <button onClick={() => {
+              localStorage.removeItem(SAVE_KEY);
+              window.location.reload();
+            }}>Start again</button>
+          </div>
+        </div>
+      )}
+
+      {!viewOnly && (
+        <div className="wrap">
+          <div className="rules">
+            <div className="ru">
+              <span className="ru-n">1</span>
+              <span>
+                <b>Spend no more than last season.</b>
+                Inter's 25/26 squad cost {fmtM(CAP)}. That's the ceiling — a player's annual cost is
+                what's left to amortise on his fee, plus his gross wage.
+              </span>
+            </div>
+            <div className="ru">
+              <span className="ru-n">2</span>
+              <span>
+                <b>Don't go past {fmtM(CASH_FLOOR)} net.</b>
+                The reported limit on what the club will spend beyond what it brings in. Sales fund
+                signings — and the academy is nearly pure profit, because those players cost nothing to sign.
+              </span>
+            </div>
+          </div>
+          <button className="methodlink" onClick={() => setModal({ type: "method" })}>
+            How these numbers are worked out, and where they come from →
+          </button>
+        </div>
+      )}
+
+      <div className="board"><div className="wrap">
+        <div className="meters">
+          <button className="meter tappable" onClick={() => setModal({ type: "costdetail" })}>
+            <div className="top-row"><span className="lbl">Squad cost · cap {fmtM(CAP)}</span><span className={"val" + (overCost ? " bad" : "")}>{fmtM(calc.cost)}</span></div>
+            <div className="track"><div className="tfill" style={{ width: Math.min(100, calc.cost / (CAP * 1.12) * 100) + "%", background: overCost ? "var(--red)" : "var(--blue2)" }} /><div className="cap" style={{ insetInlineStart: (CAP / (CAP * 1.12) * 100) + "%" }} /></div>
+            <div className={"cnote" + (overCost ? " bad" : "")}>{overCost ? "Over by " + fmtM(calc.cost - CAP) : fmtM(CAP - calc.cost) + " of headroom"}<span className="seemore">View breakdown ›</span></div>
+          </button>
+          <button className="meter tappable" onClick={() => setModal({ type: "cashdetail" })}>
+            <div className="top-row"><span className="lbl">Net transfer spend · floor {fmtM(CASH_FLOOR)}</span><span className={"val" + (overCash ? " bad" : "")}>{(calc.cash >= 0 ? "+" : "") + fmtM(calc.cash)}</span></div>
+            <div className="track"><div className="tfill" style={{ width: Math.min(100, (40e6 - calc.cash) / 120e6 * 100) + "%", background: overCash ? "var(--red)" : "var(--grass)" }} /><div className="cap" style={{ insetInlineStart: ((40e6 - CASH_FLOOR) / 120e6 * 100) + "%" }} /></div>
+            <div className={"cnote" + (overCash ? " bad" : "")}>{overCash ? "Below floor by " + fmtM(CASH_FLOOR - calc.cash) : fmtM(calc.cash - CASH_FLOOR) + " left to spend"}<span className="seemore">View breakdown ›</span></div>
+          </button>
+        </div>
+      </div></div>
+
+      <div className="wrap">
+        {!viewOnly && <div className="actions">
+          <button className="act" onClick={() => setModal({ type: "sell" })}>
+            <div className="ico" style={{ background: "#FDEBEC", color: "var(--red)" }}>↗</div>
+            <div className="t">Sell or loan</div><div className="d">Costliest first</div>
+          </button>
+          <button className="act" onClick={() => setModal({ type: "sign" })}>
+            <div className="ico" style={{ background: "#EAF7EF", color: "var(--green)" }}>+</div>
+            <div className="t">Sign a player</div><div className="d">Name them and set the terms</div>
+          </button>
+          <button className="act" onClick={() => setModal({ type: "extend" })}>
+            <div className="ico" style={{ background: "#F3EEFB", color: "#6E43C4" }}>↻</div>
+            <div className="t">Extend a deal</div><div className="d">Expiring contracts first</div>
+          </button>
+        </div>}
+
+        <div className="pitch-card">
+          <div className="pitch" data-drop="field">
+            <svg viewBox="0 0 100 124" preserveAspectRatio="none">
+              <g fill="none" stroke="rgba(255,255,255,.28)" strokeWidth=".4">
+                <rect x="3" y="3" width="94" height="118" rx="1" />
+                <line x1="3" y1="62" x2="97" y2="62" />
+                <circle cx="50" cy="62" r="9.5" />
+                <rect x="30" y="3" width="40" height="15" /><rect x="30" y="106" width="40" height="15" />
+                <rect x="41" y="3" width="18" height="6" /><rect x="41" y="115" width="18" height="6" />
+              </g>
+            </svg>
+            <div className="grid">
+              {nodes.map(cell => (
+                <div className="cell" key={cell.key} style={{ gridColumn: cell.col, gridRow: cell.row }}>
+                  {cell.starter && <Chip p={cell.starter} size="start" dragging={dragId === cell.starter.id} onDown={start} />}
+                  {cell.subs.map(s => <Chip key={s.id} p={s} size="sub" dragging={dragId === s.id} onDown={start} />)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div style={{ textAlign: "center", fontSize: 11.5, color: "var(--ink2)", marginTop: 10 }}>
+          {viewOnly ? "Tap any player to see their contract and cost. ★ = signed." : "Tap any player for their status, contract, transfer talk — and to sell, loan or extend. ★ = signed this window."}
+        </div>
+
+        {!viewOnly && moveCount > 0 && (
+          <button className="sharebtn" onClick={() => setModal({ type: "share" })}>
+            <span className="sb-main">Share this squad</span>
+            <span className="sb-sub">{moveCount} {moveCount === 1 ? "move" : "moves"} · {fmtM(calc.cost)} squad cost</span>
+          </button>
+        )}
+
+        {shortlist.length > 0 && !viewOnly && (
+          <div className="changes">
+            <h3>SHORTLIST — EDIT &amp; CONFIRM</h3>
+            {shortlist.map(t => (
+              <ShortlistRow key={t.id} t={t}
+                onUpdate={updateShortlist}
+                onSign={confirmSigning}
+                onRemove={removeFromShortlist} />
+            ))}
+          </div>
+        )}
+
+        {(exitList.length > 0 || signedList.length > 0 || extList.length > 0) && (
+          <div className="changes">
+            <h3>YOUR MOVES</h3>
+            {exitList.map(p => (
+              <div className="crow" key={p.id}>
+                <span className="nm">{p.name}</span>
+                <span className={"tag " + (p.exit.mode === "sell" ? "sell" : "loan")}>{p.exit.mode === "sell" ? "Sold " + fmtM(p.exit.fee) : "Loaned " + p.exit.coverage + "%"}</span>
+                <span className="r"><span style={{ fontSize: 13, fontWeight: 600 }}>{fmtM(annual(p))}/yr</span><button className="undo" onClick={() => undo(p.id)}>Undo</button></span>
+              </div>
+            ))}
+            {signedList.map(s => (
+              <div className="crow" key={s.id}>
+                <span className="nm">{s.name}</span><span className="tag sign">Signed {s.fee ? fmtM(s.fee) : "free"}</span>
+                <span className="r"><span style={{ fontSize: 13, fontWeight: 600 }}>{fmtM((s.fee || 0) / s.years + s.salary)}/yr</span><button className="undo" onClick={() => returnToShortlist(s.id)}>↩ Shortlist</button></span>
+              </div>
+            ))}
+            {extList.map(p => (
+              <div className="crow" key={p.id}>
+                <span className="nm">{p.name}</span><span className="tag ext">Extended +{extensions[p.id].addYears}y</span>
+                <span className="r"><span style={{ fontSize: 13, fontWeight: 600 }}>{fmtM(extensions[p.id].amort + extensions[p.id].salary)}/yr</span><button className="undo" onClick={() => setExtensions(o => { const n = { ...o }; delete n[p.id]; return n; })}>Undo</button></span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="done-row">
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink2)" }}>Done deals 🔒</span>
+          {source.from === "squad.json" && (
+            <span className="src-tag" title="Loaded from squad.json">
+              squad.json{source.asOf ? " · " + source.asOf : ""}
+            </span>
+          )}
+          {ledger.map((d, i) => <span className="done-chip" key={i}><b>{d.name}</b> {d.detail}</span>)}
+        </div>
+
+        <div className="ftr">
+          Annual squad cost = amortization (fee ÷ contract years) + gross wage. Cap = 25/26 squad cost.<br />
+          Signings are entered by hand: you name the player, the fee, the term and the wage. The simulator's job isn't to tell you who's available — it's to tell you what a move would actually cost you, and whether the books still balance afterwards. Squad figures are verified gross wages and book amortisation as of the build date.
+        </div>
+      </div>
+
+      {modal?.type === "sell" && <SellModal players={applied} onClose={() => setModal(null)} onApply={(id, exit) => { sellPlayer(id, exit); setModal(null); }} />}
+      {modal?.type === "sign" && <SignModal onClose={() => setModal(null)} onShortlist={t => { addToShortlist(t); setModal(null); }} />}
+      {modal?.type === "extend" && <ExtendModal players={applied} extensions={extensions} onClose={() => setModal(null)} onApply={(id, e) => { setExtensions(o => ({ ...o, [id]: e })); setModal(null); }} />}
+      {modal?.type === "costdetail" && <CostBreakdown players={applied} onClose={() => setModal(null)} />}
+      {modal?.type === "cashdetail" && <CashBreakdown lines={cashLines} total={calc.cash} onClose={() => setModal(null)} />}
+      {modal?.type === "method" && <MethodModal onClose={() => setModal(null)} />}
+      {modal?.type === "share" && (
+        <ShareModal
+          state={packState({ players, signed, extensions, ledger, name: squadName })}
+          cost={calc.cost} cash={calc.cash} moves={moveCount}
+          onClose={() => setModal(null)} />
+      )}
+      {popover && <Popover data={popover} viewOnly={viewOnly}
+        onSell={sellPlayer}
+        onReturn={returnToShortlist}
+        onExtend={(id, e) => { setExtensions(o => ({ ...o, [id]: e })); setPopover(null); }}
+        onClose={(id, action) => { if (action === "undo") undo(id); setPopover(null); }} />}
+    </div>
+  );
+}
+
+
+document.getElementById("boot").remove();
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

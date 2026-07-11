@@ -1,0 +1,759 @@
+{
+  "_readme": [
+    "EDIT THIS FILE when the squad changes. The app reads it on load.",
+    "",
+    "A player LEAVES  → delete his object, or set \"gone\": true (keeps the record but",
+    "                   removes him from the squad and the cost calculation).",
+    "A player ARRIVES → add an object. amort = fee ÷ years. For a buy-back, amort runs",
+    "                   on the NET of the two deals (Stankovic: paid 23, had received 10,",
+    "                   so 13 on the books ÷ 5 years = 2.6).",
+    "",
+    "salary  = GROSS €/yr (this is what the cap counts; Capology reports gross)",
+    "mult    = gross/net ratio, for the net display. ~1.5 with the Growth Decree, else ~1.84",
+    "amort   = annual amortisation in €",
+    "until   = contract expiry year",
+    "spot    = starting XI slot: GK RCB CB LCB RWB LWB RM CM DM LM ST1 ST2. Omit for a backup.",
+    "tier    = \"u23\" or \"primavera\" — kept off the pitch, and off the cost cap, but sellable",
+    "",
+    "cash    = the summer ledger. Add a line for every completed deal.",
+    "talk    = optional transfer chatter shown when you tap a player."
+  ],
+  "asOf": "2026-07-11",
+  "cap": 192300000,
+  "cashFloor": -50000000,
+  "cash": [
+    {
+      "name": "Dumfries",
+      "detail": "→ Real Madrid · €20M",
+      "amount": 20000000
+    },
+    {
+      "name": "S. Esposito",
+      "detail": "→ Cagliari, permanent · €4M",
+      "amount": 4000000
+    },
+    {
+      "name": "Khalaili",
+      "detail": "← Union SG · €25M",
+      "amount": -25000000
+    },
+    {
+      "name": "Stanković",
+      "detail": "← Brugge buy-back · €23M",
+      "amount": -23000000
+    },
+    {
+      "name": "Akanji",
+      "detail": "← permanent · €15M",
+      "amount": -15000000
+    },
+    {
+      "name": "Provedel",
+      "detail": "← Lazio · €3M",
+      "amount": -3000000
+    },
+    {
+      "name": "F. Carboni",
+      "detail": "→ Parma, permanent · €2.5M",
+      "amount": 2500000
+    },
+    {
+      "name": "Akinsanmiro",
+      "detail": "loan back, no fee",
+      "amount": 0
+    },
+    {
+      "name": "Sommer",
+      "detail": "left free",
+      "amount": 0
+    },
+    {
+      "name": "de Vrij",
+      "detail": "→ Panathinaikos, free",
+      "amount": 0
+    },
+    {
+      "name": "Darmian",
+      "detail": "left free",
+      "amount": 0
+    },
+    {
+      "name": "Acerbi",
+      "detail": "left free",
+      "amount": 0
+    },
+    {
+      "name": "Alexiou",
+      "detail": "→ AEK Athens",
+      "amount": 1500000
+    }
+  ],
+  "squad": [
+    {
+      "id": "jmartinez",
+      "name": "J. Martínez",
+      "pos": "GK",
+      "age": 28,
+      "amort": 2700000,
+      "salary": 2800000,
+      "mult": 1.84,
+      "until": 2029,
+      "spot": "GK"
+    },
+    {
+      "id": "provedel",
+      "name": "Provedel",
+      "pos": "GK",
+      "age": 33,
+      "amort": 1000000,
+      "salary": 2400000,
+      "mult": 1.84,
+      "until": 2029,
+      "signed": true
+    },
+    {
+      "id": "digennaro",
+      "name": "Di Gennaro",
+      "pos": "GK",
+      "age": 32,
+      "amort": 0,
+      "salary": 900000,
+      "mult": 1.84,
+      "until": 2027
+    },
+    {
+      "id": "bisseck",
+      "name": "Bisseck",
+      "pos": "RCB",
+      "age": 25,
+      "amort": 1400000,
+      "salary": 1920000,
+      "mult": 1.84,
+      "until": 2028,
+      "spot": "RCB",
+      "value": 30000000
+    },
+    {
+      "id": "akanji",
+      "name": "Akanji",
+      "pos": "CB",
+      "age": 31,
+      "amort": 3750000,
+      "salary": 9200000,
+      "mult": 1.5,
+      "until": 2029,
+      "spot": "CB",
+      "signed": true
+    },
+    {
+      "id": "bastoni",
+      "name": "Bastoni",
+      "pos": "LCB",
+      "age": 27,
+      "amort": 1419499,
+      "salary": 10200000,
+      "mult": 1.84,
+      "until": 2028,
+      "spot": "LCB",
+      "value": 70000000
+    },
+    {
+      "id": "pavard",
+      "name": "Pavard",
+      "pos": "RCB",
+      "age": 30,
+      "amort": 6000000,
+      "salary": 7000000,
+      "mult": 1.5,
+      "until": 2028,
+      "exiting": true,
+      "value": 15000000
+    },
+    {
+      "id": "khalaili",
+      "name": "Khalaili",
+      "pos": "RWB",
+      "age": 21,
+      "amort": 5000000,
+      "salary": 3680000,
+      "mult": 1.84,
+      "until": 2031,
+      "spot": "RWB",
+      "signed": true,
+      "pending": true
+    },
+    {
+      "id": "dimarco",
+      "name": "Dimarco",
+      "pos": "LWB",
+      "age": 28,
+      "amort": 296677,
+      "salary": 7100000,
+      "mult": 1.84,
+      "until": 2027,
+      "spot": "LWB",
+      "value": 45000000
+    },
+    {
+      "id": "caugusto",
+      "name": "C. Augusto",
+      "pos": "LWB",
+      "age": 27,
+      "amort": 1875000,
+      "salary": 2800000,
+      "mult": 1.84,
+      "until": 2028
+    },
+    {
+      "id": "diouf",
+      "name": "Diouf",
+      "pos": "RWB",
+      "age": 23,
+      "amort": 5000000,
+      "salary": 3700000,
+      "mult": 1.84,
+      "until": 2029
+    },
+    {
+      "id": "lhenrique",
+      "name": "L. Henrique",
+      "pos": "RWB",
+      "age": 24,
+      "amort": 4524588,
+      "salary": 4600000,
+      "mult": 1.84,
+      "until": 2030,
+      "value": 28000000
+    },
+    {
+      "id": "barella",
+      "name": "Barella",
+      "pos": "RM",
+      "age": 29,
+      "amort": 2601941,
+      "salary": 12000000,
+      "mult": 1.5,
+      "until": 2029,
+      "spot": "RM",
+      "value": 65000000
+    },
+    {
+      "id": "calha",
+      "name": "Çalhanoğlu",
+      "pos": "DM",
+      "age": 32,
+      "amort": 210320,
+      "salary": 11100000,
+      "mult": 1.84,
+      "until": 2027,
+      "spot": "DM",
+      "value": 25000000
+    },
+    {
+      "id": "zielinski",
+      "name": "Zieliński",
+      "pos": "LM",
+      "age": 32,
+      "amort": 500000,
+      "salary": 8300000,
+      "mult": 1.84,
+      "until": 2028,
+      "spot": "LM"
+    },
+    {
+      "id": "sucic",
+      "name": "Sučić",
+      "pos": "LM",
+      "age": 22,
+      "amort": 2800000,
+      "salary": 2800000,
+      "mult": 1.84,
+      "until": 2030,
+      "value": 30000000
+    },
+    {
+      "id": "mkhi",
+      "name": "Mkhitaryan",
+      "pos": "LM",
+      "age": 37,
+      "amort": 0,
+      "salary": 4900000,
+      "mult": 1.84,
+      "until": 2027
+    },
+    {
+      "id": "frattesi",
+      "name": "Frattesi",
+      "pos": "RM",
+      "age": 26,
+      "amort": 6600000,
+      "salary": 5190000,
+      "mult": 1.5,
+      "until": 2028,
+      "value": 30000000
+    },
+    {
+      "id": "akin",
+      "name": "Akinsanmiro",
+      "pos": "RM",
+      "age": 21,
+      "amort": 150000,
+      "salary": 1840000,
+      "mult": 1.84,
+      "until": 2028,
+      "value": 9000000
+    },
+    {
+      "id": "stankovic",
+      "name": "Stanković",
+      "pos": "DM",
+      "age": 21,
+      "amort": 2600000,
+      "salary": 3680000,
+      "mult": 1.84,
+      "until": 2031,
+      "signed": true
+    },
+    {
+      "id": "massolin",
+      "name": "Massolin",
+      "pos": "CM",
+      "age": 23,
+      "amort": 875000,
+      "salary": 2208000,
+      "mult": 1.84,
+      "until": 2030,
+      "signed": true,
+      "value": 5000000
+    },
+    {
+      "id": "asllani",
+      "name": "Asllani",
+      "pos": "DM",
+      "age": 24,
+      "amort": 3000000,
+      "salary": 1400000,
+      "mult": 1.84,
+      "until": 2028,
+      "exiting": true,
+      "value": 12000000
+    },
+    {
+      "id": "lautaro",
+      "name": "L. Martínez",
+      "pos": "ST",
+      "age": 29,
+      "amort": 998840,
+      "salary": 16700000,
+      "mult": 1.5,
+      "until": 2029,
+      "spot": "ST1",
+      "value": 90000000
+    },
+    {
+      "id": "thuram",
+      "name": "Thuram",
+      "pos": "ST",
+      "age": 29,
+      "amort": 1517446,
+      "salary": 7600000,
+      "mult": 1.5,
+      "until": 2028,
+      "spot": "ST2",
+      "value": 75000000
+    },
+    {
+      "id": "pio",
+      "name": "Pio Esposito",
+      "pos": "ST",
+      "age": 21,
+      "amort": 0,
+      "salary": 1800000,
+      "mult": 1.84,
+      "until": 2030,
+      "value": 30000000
+    },
+    {
+      "id": "bonny",
+      "name": "Bonny",
+      "pos": "ST",
+      "age": 22,
+      "amort": 4600000,
+      "salary": 3700000,
+      "mult": 1.84,
+      "until": 2030
+    },
+    {
+      "id": "kamate",
+      "name": "Kamate",
+      "pos": "CM",
+      "age": 21,
+      "tier": "u23",
+      "amort": 0,
+      "salary": 400000,
+      "mult": 1.84,
+      "value": 5000000
+    },
+    {
+      "id": "berenbruch",
+      "name": "Berenbruch",
+      "pos": "CM",
+      "age": 21,
+      "tier": "u23",
+      "amort": 0,
+      "salary": 350000,
+      "mult": 1.84,
+      "value": 3500000
+    },
+    {
+      "id": "depieri",
+      "name": "De Pieri",
+      "pos": "ST",
+      "age": 20,
+      "tier": "u23",
+      "amort": 0,
+      "salary": 300000,
+      "mult": 1.84,
+      "value": 4000000
+    },
+    {
+      "id": "cocchi",
+      "name": "Cocchi",
+      "pos": "LWB",
+      "age": 20,
+      "tier": "u23",
+      "amort": 0,
+      "salary": 300000,
+      "mult": 1.84,
+      "value": 3000000
+    },
+    {
+      "id": "topalovic",
+      "name": "Topalović",
+      "pos": "CM",
+      "age": 20,
+      "tier": "u23",
+      "amort": 600000,
+      "salary": 350000,
+      "mult": 1.84,
+      "value": 4000000
+    },
+    {
+      "id": "cinquegrano",
+      "name": "Cinquegrano",
+      "pos": "RWB",
+      "age": 22,
+      "tier": "u23",
+      "amort": 0,
+      "salary": 250000,
+      "mult": 1.84,
+      "value": 1500000
+    },
+    {
+      "id": "stante",
+      "name": "Stante",
+      "pos": "CB",
+      "age": 20,
+      "tier": "u23",
+      "amort": 0,
+      "salary": 200000,
+      "mult": 1.84,
+      "value": 1500000
+    },
+    {
+      "id": "calligaris",
+      "name": "Calligaris",
+      "pos": "GK",
+      "age": 20,
+      "tier": "u23",
+      "amort": 0,
+      "salary": 200000,
+      "mult": 1.84,
+      "value": 1200000
+    },
+    {
+      "id": "lavelli",
+      "name": "Lavelli",
+      "pos": "ST",
+      "age": 21,
+      "tier": "u23",
+      "amort": 0,
+      "salary": 200000,
+      "mult": 1.84,
+      "value": 1200000
+    },
+    {
+      "id": "kaczmarski",
+      "name": "Kaczmarski",
+      "pos": "DM",
+      "age": 21,
+      "tier": "u23",
+      "amort": 0,
+      "salary": 200000,
+      "mult": 1.84,
+      "value": 900000
+    },
+    {
+      "id": "amerighi",
+      "name": "Amerighi",
+      "pos": "CB",
+      "age": 20,
+      "tier": "u23",
+      "amort": 0,
+      "salary": 200000,
+      "mult": 1.84,
+      "value": 1000000
+    },
+    {
+      "id": "marello",
+      "name": "Marello",
+      "pos": "LWB",
+      "age": 19,
+      "tier": "primavera",
+      "amort": 800000,
+      "salary": 150000,
+      "mult": 1.84,
+      "value": 4000000
+    },
+    {
+      "id": "maye",
+      "name": "Maye",
+      "pos": "CB",
+      "age": 18,
+      "tier": "primavera",
+      "amort": 0,
+      "salary": 100000,
+      "mult": 1.84,
+      "value": 1500000
+    },
+    {
+      "id": "idrissou",
+      "name": "Idrissou",
+      "pos": "ST",
+      "age": 18,
+      "tier": "primavera",
+      "amort": 0,
+      "salary": 100000,
+      "mult": 1.84,
+      "value": 2000000
+    },
+    {
+      "id": "jakirovic",
+      "name": "Jakirović",
+      "pos": "CB",
+      "age": 18,
+      "tier": "primavera",
+      "amort": 0,
+      "salary": 100000,
+      "mult": 1.84,
+      "value": 1000000
+    },
+    {
+      "id": "mosconi",
+      "name": "Mosconi",
+      "pos": "ST",
+      "age": 19,
+      "tier": "primavera",
+      "amort": 0,
+      "salary": 120000,
+      "mult": 1.84,
+      "value": 1200000
+    },
+    {
+      "id": "venturini",
+      "name": "Venturini",
+      "pos": "CM",
+      "age": 19,
+      "tier": "primavera",
+      "amort": 0,
+      "salary": 100000,
+      "mult": 1.84,
+      "value": 800000
+    },
+    {
+      "id": "zarate",
+      "name": "Zarate",
+      "pos": "RWB",
+      "age": 18,
+      "tier": "primavera",
+      "amort": 0,
+      "salary": 90000,
+      "mult": 1.84,
+      "value": 700000
+    },
+    {
+      "id": "bovo",
+      "name": "Bovo",
+      "pos": "CB",
+      "age": 18,
+      "tier": "primavera",
+      "amort": 0,
+      "salary": 90000,
+      "mult": 1.84,
+      "value": 600000
+    }
+  ],
+  "talk": {
+    "pavard": {
+      "price": 15000000,
+      "clubs": [
+        "Marseille",
+        "Galatasaray"
+      ],
+      "type": "Listed for sale",
+      "talk": "Back from his Marseille loan. Inter tasked agent Pastorello with finding a move abroad — a sale or a loan with an obligation are both on the table."
+    },
+    "asllani": {
+      "price": 12000000,
+      "clubs": [
+        "Beşiktaş",
+        "Torino"
+      ],
+      "type": "Listed for sale",
+      "talk": "Returned after loans at Torino and Beşiktaş, who held an €11M option. Surplus to the midfield; Inter want a permanent exit."
+    },
+    "frattesi": {
+      "price": 30000000,
+      "clubs": [
+        "Roma",
+        "Atlético",
+        "Newcastle"
+      ],
+      "type": "Sale rumours",
+      "talk": "Inter price him around €30M. No formal bid yet, but he's the most likely midfield sale if a big offer lands."
+    },
+    "sucic": {
+      "price": 30000000,
+      "clubs": [
+        "Real Madrid"
+      ],
+      "type": "Sale rumours",
+      "talk": "Croatian press report Real Madrid scouting him. Inter consider him a long-term starter and would resist."
+    },
+    "lhenrique": {
+      "price": 28000000,
+      "clubs": [
+        "Bournemouth",
+        "Nottingham Forest"
+      ],
+      "type": "Sale rumours",
+      "talk": "Bournemouth bid around €30M in January. Inter remain open to a similar figure — he's behind Khalaili in the pecking order."
+    },
+    "bisseck": {
+      "price": 30000000,
+      "clubs": [
+        "Bayern",
+        "Tottenham"
+      ],
+      "type": "Sale rumours",
+      "talk": "Bayern have checked his valuation. Inter would want well above €30M given he's a first-choice centre-back."
+    },
+    "akin": {
+      "price": 8500000,
+      "clubs": [
+        "Pisa",
+        "Werder",
+        "Gladbach"
+      ],
+      "type": "Loan or sale",
+      "talk": "Pisa's €7.5M buy-back lapsed on a paperwork error, so he's back at Inter. Werder and Gladbach have enquired — another loan is the likeliest outcome."
+    },
+    "bastoni": {
+      "price": 70000000,
+      "clubs": [
+        "Man City",
+        "Real Madrid"
+      ],
+      "type": "Not for sale",
+      "talk": "Perennially linked with the Premier League. Inter class him as untouchable — only a bid far beyond €70M would be entertained."
+    },
+    "calha": {
+      "price": 25000000,
+      "clubs": [
+        "Galatasaray"
+      ],
+      "type": "Sale rumours",
+      "talk": "Galatasaray have courted him for two windows. With one year left on his deal, this is the last window to cash in — or extend."
+    },
+    "pio": {
+      "price": 30000000,
+      "clubs": [
+        "Chelsea"
+      ],
+      "type": "Sale rumours",
+      "talk": "Chelsea have shown interest in the academy striker. He's said to be happy in Milan and Inter want to keep him."
+    },
+    "dimarco": {
+      "price": 45000000,
+      "clubs": [],
+      "type": "Renewal talk",
+      "talk": "No serious exit talk — but his deal expires in 2027 and the club are planning an extension."
+    },
+    "kamate": {
+      "price": 5000000,
+      "clubs": [],
+      "type": "Sale rumours",
+      "talk": "His agent says there's plenty of foreign interest. A sale would be near-pure profit as an academy product."
+    },
+    "berenbruch": {
+      "price": 3500000,
+      "clubs": [
+        "Cagliari"
+      ],
+      "type": "Loan only",
+      "talk": "Talks with Cagliari are ongoing but the clubs haven't agreed a formula. Inter insist he leaves only on loan with a buy-back clause."
+    },
+    "depieri": {
+      "price": 4000000,
+      "clubs": [
+        "Ascoli"
+      ],
+      "type": "Loan or sale",
+      "talk": "A move to Ascoli is in its final stages — a loan with a purchase option for them and a counter-option retained by Inter."
+    },
+    "cocchi": {
+      "price": 3000000,
+      "clubs": [
+        "Pisa",
+        "Palermo",
+        "Catanzaro"
+      ],
+      "type": "Sale rumours",
+      "talk": "Three Serie B clubs are monitoring the young winger. Inter are open to a permanent exit."
+    },
+    "marello": {
+      "price": 4000000,
+      "clubs": [],
+      "type": "Not for sale",
+      "talk": "Signed permanently from Udinese after an impressive Primavera season — Inter see him as one to keep."
+    },
+    "massolin": {
+      "price": 5000000,
+      "clubs": [],
+      "type": "Not for sale",
+      "talk": "Signed from Modena in January and loaned straight back — he joins properly this summer. Base fee €3.5M with bonuses taking it to €4.5-5M; the books run on the base, so €875k a year over his four-year deal. Bologna have already enquired."
+    },
+    "khalaili": {
+      "price": 25000000,
+      "clubs": [
+        "Union SG"
+      ],
+      "type": "Signing pending",
+      "talk": "Romano has called it — here we go — but the medical hasn't been signed off, so it isn't formally done. Transfermarkt still doesn't list him. He's in the squad and the books here on the assumption it completes; if it collapses, €25M comes back and the right flank opens up again."
+    }
+  },
+  "sources": {
+    "note": "Squad cost = gross wages + per-player amortisation. This is exactly the method Calcio e Finanza use.",
+    "validation": {
+      "ourWageBill": "137.3M gross",
+      "cfWageBill": "~141M gross (Calcio e Finanza: Inter has Serie A's highest)",
+      "ourSquadCost": "195.9M",
+      "cfSquadCost": "~195M for 25/26 (C&F: Milan 197M edges Inter)",
+      "verdict": "within 3% — the model tracks the published figures"
+    },
+    "wages": "Capology / Calcio e Finanza — GROSS. mult (1.5 vs 1.84) reflects whether the player still qualifies for the Decreto Crescita tax break.",
+    "amortisation": "fee ÷ contract length, from official announcements. A buy-back books the net of the two deals (Stankovic: 23 paid − 10 previously received = 13 on the books).",
+    "excluded": "Agent commissions — Calcio e Finanza leave these out of amortisation too.",
+    "bonuses": "Base fee only. Add-ons are contingent consideration: under IFRS a club may capitalise them when they become probable, or only once triggered. Inter's published amortisation figures use the base fee, so that's what we use."
+  }
+}
