@@ -59,7 +59,7 @@
     },
     {
       "name": "Akinsanmiro",
-      "detail": "loan back, no fee",
+      "detail": "← back from loan, no fee",
       "amount": 0
     },
     {
@@ -139,8 +139,8 @@
       "pos": "CB",
       "age": 31,
       "amort": 3750000,
-      "salary": 9200000,
-      "mult": 1.5,
+      "salary": 6899000,
+      "mult": 1.84,
       "until": 2029,
       "spot": "CB",
       "signed": true
@@ -212,7 +212,8 @@
       "amort": 5000000,
       "salary": 3700000,
       "mult": 1.84,
-      "until": 2029
+      "until": 2029,
+      "value": 20000000
     },
     {
       "id": "lhenrique",
@@ -220,10 +221,10 @@
       "pos": "RWB",
       "age": 24,
       "amort": 4524588,
-      "salary": 4600000,
+      "salary": 3900000,
       "mult": 1.84,
       "until": 2030,
-      "value": 28000000
+      "value": 25000000
     },
     {
       "id": "barella",
@@ -269,7 +270,7 @@
       "salary": 2800000,
       "mult": 1.84,
       "until": 2030,
-      "value": 30000000
+      "value": 60000000
     },
     {
       "id": "mkhi",
@@ -317,7 +318,7 @@
     {
       "id": "massolin",
       "name": "Massolin",
-      "pos": "CM",
+      "pos": "RM",
       "age": 23,
       "amort": 875000,
       "salary": 2208000,
@@ -347,7 +348,7 @@
       "salary": 16700000,
       "mult": 1.5,
       "until": 2029,
-      "spot": "ST1",
+      "spot": "ST2",
       "value": 90000000
     },
     {
@@ -359,7 +360,7 @@
       "salary": 7600000,
       "mult": 1.5,
       "until": 2028,
-      "spot": "ST2",
+      "spot": "ST1",
       "value": 75000000
     },
     {
@@ -371,7 +372,7 @@
       "salary": 1800000,
       "mult": 1.84,
       "until": 2030,
-      "value": 30000000
+      "value": 75000000
     },
     {
       "id": "bonny",
@@ -386,7 +387,7 @@
     {
       "id": "kamate",
       "name": "Kamate",
-      "pos": "CM",
+      "pos": "RM",
       "age": 21,
       "tier": "u23",
       "amort": 0,
@@ -397,7 +398,7 @@
     {
       "id": "berenbruch",
       "name": "Berenbruch",
-      "pos": "CM",
+      "pos": "LM",
       "age": 21,
       "tier": "u23",
       "amort": 0,
@@ -430,7 +431,7 @@
     {
       "id": "topalovic",
       "name": "Topalović",
-      "pos": "CM",
+      "pos": "LM",
       "age": 20,
       "tier": "u23",
       "amort": 600000,
@@ -562,7 +563,7 @@
     {
       "id": "venturini",
       "name": "Venturini",
-      "pos": "CM",
+      "pos": "RM",
       "age": 19,
       "tier": "primavera",
       "amort": 0,
@@ -738,8 +739,8 @@
       "clubs": [
         "Union SG"
       ],
-      "type": "Signing pending",
-      "talk": "Romano has called it — here we go — but the medical hasn't been signed off, so it isn't formally done. Transfermarkt still doesn't list him. He's in the squad and the books here on the assumption it completes; if it collapses, €25M comes back and the right flank opens up again."
+      "type": "Signing paused",
+      "talk": "Romano called it — but the move is now on hold after CONI asked for extra checks on the paperwork (Gazzetta). Transfermarkt still doesn't list him. Guéla Doué of Strasbourg is the fallback if it collapses. He's in the squad and the books on the assumption it clears; if it doesn't, €25M comes back and the right flank reopens."
     }
   },
   "sources": {
@@ -755,5 +756,499 @@
     "amortisation": "fee ÷ contract length, from official announcements. A buy-back books the net of the two deals (Stankovic: 23 paid − 10 previously received = 13 on the books).",
     "excluded": "Agent commissions — Calcio e Finanza leave these out of amortisation too.",
     "bonuses": "Base fee only. Add-ons are contingent consideration: under IFRS a club may capitalise them when they become probable, or only once triggered. Inter's published amortisation figures use the base fee, so that's what we use."
-  }
+  },
+  "pool": [
+    {
+      "n": "Guéla Doué",
+      "c": "Strasbourg",
+      "pos": "RWB",
+      "age": 23,
+      "fee": 25,
+      "net": 1.8,
+      "until": 2028,
+      "d": 0,
+      "heat": 3,
+      "note": "Inter's primary alternative if Khalaili collapses (Gazzetta)"
+    },
+    {
+      "n": "Brooke Norton-Cuffy",
+      "c": "Genoa",
+      "pos": "RWB",
+      "age": 22,
+      "fee": 15,
+      "net": 1.2,
+      "until": 2029,
+      "d": 0,
+      "heat": 2,
+      "note": "Alternative, currently less preferred (Tuttomercato)"
+    },
+    {
+      "n": "Dodô",
+      "c": "Fiorentina",
+      "pos": "RWB",
+      "age": 27,
+      "fee": 20,
+      "net": 2.2,
+      "until": 2027,
+      "d": 0,
+      "heat": 2,
+      "note": "Alternative, less preferred (Tuttomercato)"
+    },
+    {
+      "n": "Raoul Bellanova",
+      "c": "Atalanta",
+      "pos": "RWB",
+      "age": 26,
+      "fee": 25,
+      "net": 2.5,
+      "until": 2028,
+      "d": 9,
+      "heat": 2,
+      "note": "Leaving Atalanta; proposed to Inter"
+    },
+    {
+      "n": "Wilfried Singo",
+      "c": "Monaco",
+      "pos": "RWB",
+      "age": 25,
+      "fee": 25,
+      "net": 2.5,
+      "until": 2028,
+      "d": 15,
+      "heat": 2,
+      "note": "Inter moved for him at right-back (Fanatik)"
+    },
+    {
+      "n": "Nahuel Molina",
+      "c": "Atlético",
+      "pos": "RWB",
+      "age": 28,
+      "fee": 15,
+      "net": 3.0,
+      "until": 2027,
+      "d": 15,
+      "heat": 1,
+      "note": "Long-admired, watched since Udinese"
+    },
+    {
+      "n": "Agustín Giay",
+      "c": "Palmeiras",
+      "pos": "RWB",
+      "age": 22,
+      "fee": 12,
+      "net": 1.5,
+      "until": 2028,
+      "d": 15,
+      "heat": 1,
+      "note": "Alternative for the right flank"
+    },
+    {
+      "n": "Malo Gusto",
+      "c": "Chelsea",
+      "pos": "RWB",
+      "age": 22,
+      "fee": 30,
+      "net": 3.0,
+      "until": 2030,
+      "d": 21,
+      "heat": 1,
+      "note": "Agent met Inter earlier in the window"
+    },
+    {
+      "n": "Trevoh Chalobah",
+      "c": "Chelsea",
+      "pos": "CB",
+      "age": 27,
+      "fee": 30,
+      "net": 2.5,
+      "until": 2028,
+      "d": 1,
+      "heat": 3,
+      "note": "Inter stepping up; the player wants the move"
+    },
+    {
+      "n": "Jhon Lucumí",
+      "c": "Bologna",
+      "pos": "CB",
+      "age": 27,
+      "fee": 28,
+      "net": 2.2,
+      "until": 2027,
+      "d": 1,
+      "heat": 3,
+      "note": "Inter enquired — €28M release clause (Corriere)"
+    },
+    {
+      "n": "Davinson Sánchez",
+      "c": "Galatasaray",
+      "pos": "CB",
+      "age": 30,
+      "fee": 18,
+      "net": 3.0,
+      "until": 2027,
+      "d": 1,
+      "heat": 2,
+      "note": "Alternative to Chalobah, but priced higher"
+    },
+    {
+      "n": "Tarik Muharemović",
+      "c": "Sassuolo",
+      "pos": "CB",
+      "age": 23,
+      "fee": 15,
+      "net": 1.5,
+      "until": 2029,
+      "d": 0,
+      "heat": 2,
+      "note": "Juventus have eased off, leaving Inter a run"
+    },
+    {
+      "n": "Bremer",
+      "c": "Juventus",
+      "pos": "CB",
+      "age": 29,
+      "fee": 40,
+      "net": 5.0,
+      "until": 2028,
+      "d": 0,
+      "heat": 1,
+      "note": "CalcioMercato float it — derby move, long odds"
+    },
+    {
+      "n": "John Stones",
+      "c": "free agent",
+      "pos": "CB",
+      "age": 32,
+      "fee": 0,
+      "net": 4.0,
+      "until": null,
+      "d": 7,
+      "heat": 2,
+      "note": "Free after leaving City; proposed to Inter again (Moretto)"
+    },
+    {
+      "n": "Gianluca Mancini",
+      "c": "Roma",
+      "pos": "CB",
+      "age": 30,
+      "fee": 20,
+      "net": 3.0,
+      "until": 2027,
+      "d": 7,
+      "heat": 1,
+      "note": "On the centre-back shortlist (CalcioMercato)"
+    },
+    {
+      "n": "Cristian Romero",
+      "c": "Tottenham",
+      "pos": "CB",
+      "age": 28,
+      "fee": 45,
+      "net": 5.0,
+      "until": 2029,
+      "d": 10,
+      "heat": 1,
+      "note": "Wants out of Spurs; Inter linked"
+    },
+    {
+      "n": "Joel Ordóñez",
+      "c": "Club Brugge",
+      "pos": "CB",
+      "age": 21,
+      "fee": 25,
+      "net": 1.8,
+      "until": 2029,
+      "d": 13,
+      "heat": 1,
+      "note": "Interest ongoing (Corriere)"
+    },
+    {
+      "n": "Luka Vušković",
+      "c": "Tottenham",
+      "pos": "CB",
+      "age": 19,
+      "fee": 20,
+      "net": 1.5,
+      "until": 2029,
+      "d": 13,
+      "heat": 1,
+      "note": "Among the big European clubs tracking him"
+    },
+    {
+      "n": "Alessandro Circati",
+      "c": "Parma",
+      "pos": "CB",
+      "age": 22,
+      "fee": 18,
+      "net": 1.5,
+      "until": 2028,
+      "d": 16,
+      "heat": 1,
+      "note": "Defensive option under consideration"
+    },
+    {
+      "n": "Nathan Aké",
+      "c": "Man City",
+      "pos": "CB",
+      "age": 31,
+      "fee": 20,
+      "net": 4.0,
+      "until": 2027,
+      "d": 26,
+      "heat": 1,
+      "note": "Linked earlier in the window"
+    },
+    {
+      "n": "Curtis Jones",
+      "c": "Liverpool",
+      "pos": "CM",
+      "age": 25,
+      "fee": 35,
+      "net": 3.0,
+      "until": 2027,
+      "d": 0,
+      "heat": 3,
+      "note": "Top target. Liverpool won't go below £30M; Inter expected back"
+    },
+    {
+      "n": "Niccolò Pisilli",
+      "c": "Roma",
+      "pos": "CM",
+      "age": 21,
+      "fee": 35,
+      "net": 1.5,
+      "until": 2030,
+      "d": 13,
+      "heat": 3,
+      "note": "The alternative to Jones if that stalls"
+    },
+    {
+      "n": "Lucas Bergvall",
+      "c": "Tottenham",
+      "pos": "CM",
+      "age": 20,
+      "fee": 40,
+      "net": 2.5,
+      "until": 2029,
+      "d": 4,
+      "heat": 2,
+      "note": "Among the clubs interested (Team Talk)"
+    },
+    {
+      "n": "Morten Hjulmand",
+      "c": "Sporting",
+      "pos": "DM",
+      "age": 27,
+      "fee": 30,
+      "net": 2.5,
+      "until": 2028,
+      "d": 16,
+      "heat": 2,
+      "note": "Milan have backed off — Inter and Napoli lead"
+    },
+    {
+      "n": "Eduardo Camavinga",
+      "c": "Real Madrid",
+      "pos": "CM",
+      "age": 23,
+      "fee": 60,
+      "net": 5.0,
+      "until": 2029,
+      "d": 13,
+      "heat": 1,
+      "note": "Monitored; Madrid value him around €60M (AS)"
+    },
+    {
+      "n": "Bruno Guimarães",
+      "c": "Newcastle",
+      "pos": "CM",
+      "age": 28,
+      "fee": 70,
+      "net": 5.5,
+      "until": 2028,
+      "d": 15,
+      "heat": 1,
+      "note": "One of several clubs watching (CaughtOffside)"
+    },
+    {
+      "n": "Sandro Tonali",
+      "c": "Newcastle",
+      "pos": "CM",
+      "age": 25,
+      "fee": 60,
+      "net": 5.0,
+      "until": 2028,
+      "d": 12,
+      "heat": 1,
+      "note": "Ausilio admitted more could have been done"
+    },
+    {
+      "n": "Arthur Vermeeren",
+      "c": "Leipzig",
+      "pos": "DM",
+      "age": 21,
+      "fee": 20,
+      "net": 2.0,
+      "until": 2029,
+      "d": 29,
+      "heat": 1,
+      "note": "Linked earlier in the window"
+    },
+    {
+      "n": "Julian Brandt",
+      "c": "Dortmund",
+      "pos": "CM",
+      "age": 29,
+      "fee": 15,
+      "net": 3.5,
+      "until": 2027,
+      "d": 22,
+      "heat": 1,
+      "note": "Linked earlier in the window"
+    },
+    {
+      "n": "Andrea Cambiaso",
+      "c": "Juventus",
+      "pos": "LWB",
+      "age": 26,
+      "fee": 40,
+      "net": 4.0,
+      "until": 2029,
+      "d": 12,
+      "heat": 1,
+      "note": "Swap talk with Frattesi denied by both sides"
+    },
+    {
+      "n": "Dan Ndoye",
+      "c": "Nottingham Forest",
+      "pos": "ST",
+      "age": 25,
+      "fee": 35,
+      "net": 2.5,
+      "until": 2029,
+      "d": 13,
+      "heat": 2,
+      "note": "Focus shifted here after missing Palestra (TMW)"
+    },
+    {
+      "n": "Federico Chiesa",
+      "c": "Liverpool",
+      "pos": "ST",
+      "age": 28,
+      "fee": 20,
+      "net": 4.0,
+      "until": 2028,
+      "d": 14,
+      "heat": 1,
+      "note": "Romano floated a possible return to Italy"
+    },
+    {
+      "n": "Moussa Diaby",
+      "c": "Al-Ittihad",
+      "pos": "ST",
+      "age": 26,
+      "fee": 40,
+      "net": 5.0,
+      "until": 2028,
+      "d": 15,
+      "heat": 1,
+      "note": "Expensive at around €40M (Tuttomercato)"
+    },
+    {
+      "n": "Rodrygo",
+      "c": "Real Madrid",
+      "pos": "ST",
+      "age": 25,
+      "fee": 70,
+      "net": 6.0,
+      "until": 2028,
+      "d": 26,
+      "heat": 1,
+      "note": "Linked earlier in the window"
+    },
+    {
+      "n": "Endrick",
+      "c": "Real Madrid",
+      "pos": "ST",
+      "age": 19,
+      "fee": 40,
+      "net": 3.0,
+      "until": 2030,
+      "d": 27,
+      "heat": 1,
+      "note": "Linked earlier in the window"
+    },
+    {
+      "n": "Bradley Barcola",
+      "c": "PSG",
+      "pos": "ST",
+      "age": 23,
+      "fee": 60,
+      "net": 4.5,
+      "until": 2028,
+      "d": 28,
+      "heat": 1,
+      "note": "Linked earlier in the window"
+    },
+    {
+      "n": "Brahim Díaz",
+      "c": "Real Madrid",
+      "pos": "ST",
+      "age": 26,
+      "fee": 35,
+      "net": 4.0,
+      "until": 2027,
+      "d": 28,
+      "heat": 1,
+      "note": "Linked earlier in the window"
+    },
+    {
+      "n": "Arda Güler",
+      "c": "Real Madrid",
+      "pos": "CM",
+      "age": 21,
+      "fee": 50,
+      "net": 3.5,
+      "until": 2029,
+      "d": 29,
+      "heat": 1,
+      "note": "Linked earlier in the window"
+    },
+    {
+      "n": "Guglielmo Vicario",
+      "c": "Tottenham",
+      "pos": "GK",
+      "age": 29,
+      "fee": 25,
+      "net": 2.8,
+      "until": 2028,
+      "d": 2,
+      "heat": 2,
+      "note": "Exit from Spurs has stalled; Inter and Juve interested"
+    },
+    {
+      "n": "Konstantinos Tzolakis",
+      "c": "Olympiacos",
+      "pos": "GK",
+      "age": 23,
+      "fee": 15,
+      "net": 1.5,
+      "until": 2029,
+      "d": 8,
+      "heat": 1,
+      "note": "Was shortlisted after Sommer left"
+    },
+    {
+      "n": "Kepa Arrizabalaga",
+      "c": "Arsenal",
+      "pos": "GK",
+      "age": 31,
+      "fee": 10,
+      "net": 3.0,
+      "until": 2027,
+      "d": 9,
+      "heat": 1,
+      "note": "Was the fallback if Provedel fell through"
+    }
+  ]
 }
