@@ -741,6 +741,84 @@
       ],
       "type": "Signing paused",
       "talk": "Romano called it — but the move is now on hold after CONI asked for extra checks on the paperwork (Gazzetta). Transfermarkt still doesn't list him. Guéla Doué of Strasbourg is the fallback if it collapses. He's in the squad and the books on the assumption it clears; if it doesn't, €25M comes back and the right flank reopens."
+    },
+    "jmartinez": {
+      "price": null,
+      "clubs": [],
+      "type": "Settled",
+      "talk": "Took the gloves when Sommer's deal ran out. Signed from Genoa in 2024 and now the first-choice keeper, with a contract that runs to 2029."
+    },
+    "provedel": {
+      "price": null,
+      "clubs": [],
+      "type": "New signing",
+      "talk": "Signed from Lazio for €3M on a three-year deal — Romano confirmed it in early July. He arrives as the experienced back-up behind J. Martínez."
+    },
+    "digennaro": {
+      "price": null,
+      "clubs": [],
+      "type": "Squad filler",
+      "talk": "Third keeper, on next to nothing. He's there to make up the numbers rather than to play."
+    },
+    "akanji": {
+      "price": null,
+      "clubs": [],
+      "type": "Made permanent",
+      "talk": "His loan from Manchester City became permanent on 1 July for €15M. His wage steps up to €6.9M gross for 26/27, so he's now one of the costlier defenders on the books."
+    },
+    "caugusto": {
+      "price": null,
+      "clubs": [],
+      "type": "Settled",
+      "talk": "The understudy at left wing-back. Useful because he covers three positions, and cheap for what he gives — under €5M a year all-in."
+    },
+    "diouf": {
+      "price": null,
+      "clubs": [],
+      "type": "Settled",
+      "talk": "Signed from Lens last summer and still bedding in. His €5M amortisation is the bigger half of his cost, so selling him early would sting the books."
+    },
+    "barella": {
+      "price": null,
+      "clubs": [],
+      "type": "Not for sale",
+      "talk": "The most expensive midfielder in the squad at €14.6M a year, almost all of it wages. Inter have consistently refused to discuss him."
+    },
+    "zielinski": {
+      "price": null,
+      "clubs": [],
+      "type": "Winding down",
+      "talk": "Arrived on a free, which is why almost nothing sits on his amortisation. It's a pure wage cost — and at 32, one that Inter would happily see come off the books."
+    },
+    "mkhi": {
+      "price": null,
+      "clubs": [],
+      "type": "Renewed",
+      "talk": "Extended by a year on 1 July, the only one of the five expiring contracts that Inter chose to keep. Free when he signed, so his cost is wages and nothing else."
+    },
+    "stankovic": {
+      "price": null,
+      "clubs": [],
+      "type": "Bought back",
+      "talk": "Brought back from Club Brugge for €23M — but because Inter had sold him for €10M, only €13M sits on the books. That's why his annual cost looks small next to what the club actually paid."
+    },
+    "lautaro": {
+      "price": null,
+      "clubs": [],
+      "type": "Captain",
+      "talk": "The captain, and the single biggest cost in the squad at €17.7M a year. Almost all of it is wages — his transfer fee was written off years ago."
+    },
+    "thuram": {
+      "price": null,
+      "clubs": [],
+      "type": "Not for sale",
+      "talk": "Signed on a free from Mönchengladbach, so his fee costs the club nothing each year. The whole €9.1M is wages, which makes him unusually good value for a player of his level."
+    },
+    "bonny": {
+      "price": null,
+      "clubs": [],
+      "type": "Settled",
+      "talk": "Signed from Parma last summer. Still has €4.6M a year to write off on his fee, so an early sale would leave a loss on the books."
     }
   },
   "sources": {
