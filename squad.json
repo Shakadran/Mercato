@@ -10,7 +10,7 @@
     "",
     "salary  = GROSS €/yr (this is what the cap counts; Capology reports gross)",
     "mult    = gross/net ratio, for the net display. ~1.5 with the Growth Decree, else ~1.84",
-    "amort   = annual amortisation in €",
+    "amort   = annual amortization in €",
     "until   = contract expiry year",
     "spot    = starting XI slot: GK RCB CB LCB RWB LWB RM CM DM LM ST1 ST2. Omit for a backup.",
     "tier    = \"u23\" or \"primavera\" — kept off the pitch, and off the cost cap, but sellable",
@@ -647,7 +647,7 @@
         "Tottenham"
       ],
       "type": "Sale rumours",
-      "talk": "Bayern have checked his valuation. Inter would want well above €30M given he's a first-choice centre-back."
+      "talk": "Bayern have checked his valuation. Inter would want well above €30M given he's a first-choice center-back."
     },
     "akin": {
       "price": 8500000,
@@ -776,7 +776,7 @@
       "price": null,
       "clubs": [],
       "type": "Settled",
-      "talk": "Signed from Lens last summer and still bedding in. His €5M amortisation is the bigger half of his cost, so selling him early would sting the books."
+      "talk": "Signed from Lens last summer and still bedding in. His €5M amortization is the bigger half of his cost, so selling him early would sting the books."
     },
     "barella": {
       "price": null,
@@ -788,7 +788,7 @@
       "price": null,
       "clubs": [],
       "type": "Winding down",
-      "talk": "Arrived on a free, which is why almost nothing sits on his amortisation. It's a pure wage cost — and at 32, one that Inter would happily see come off the books."
+      "talk": "Arrived on a free, which is why almost nothing sits on his amortization. It's a pure wage cost — and at 32, one that Inter would happily see come off the books."
     },
     "mkhi": {
       "price": null,
@@ -822,7 +822,7 @@
     }
   },
   "sources": {
-    "note": "Squad cost = gross wages + per-player amortisation. This is exactly the method Calcio e Finanza use.",
+    "note": "Squad cost = gross wages + per-player amortization. This is exactly the method Calcio e Finanza use.",
     "validation": {
       "ourWageBill": "137.3M gross",
       "cfWageBill": "~141M gross (Calcio e Finanza: Inter has Serie A's highest)",
@@ -831,9 +831,9 @@
       "verdict": "within 3% — the model tracks the published figures"
     },
     "wages": "Capology / Calcio e Finanza — GROSS. mult (1.5 vs 1.84) reflects whether the player still qualifies for the Decreto Crescita tax break.",
-    "amortisation": "fee ÷ contract length, from official announcements. A buy-back books the net of the two deals (Stankovic: 23 paid − 10 previously received = 13 on the books).",
-    "excluded": "Agent commissions — Calcio e Finanza leave these out of amortisation too.",
-    "bonuses": "Base fee only. Add-ons are contingent consideration: under IFRS a club may capitalise them when they become probable, or only once triggered. Inter's published amortisation figures use the base fee, so that's what we use."
+    "amortization": "fee ÷ contract length, from official announcements. A buy-back books the net of the two deals (Stankovic: 23 paid − 10 previously received = 13 on the books).",
+    "excluded": "Agent commissions — Calcio e Finanza leave these out of amortization too.",
+    "bonuses": "Base fee only. Add-ons are contingent consideration: under IFRS a club may capitalize them when they become probable, or only once triggered. Inter's published amortization figures use the base fee, so that's what we use."
   },
   "pool": [
     {
@@ -1014,7 +1014,7 @@
       "until": 2027,
       "d": 7,
       "heat": 1,
-      "note": "On the centre-back shortlist (CalcioMercato)"
+      "note": "On the center-back shortlist (CalcioMercato)"
     },
     {
       "n": "Cristian Romero",
